@@ -42,7 +42,7 @@ Every stock change is recorded as a **movement** (a sale, a purchase, an adjustm
 | Store readiness: complete manifest, icons incl. maskable, screenshots, privacy policy page, release checker, store assets and listing text | Built; Chrome installability and offline verified |
 | Customers: add, edit, archive, delete (only with no purchases), optional on any sale, purchase history, total spent, average sale, last purchase | Built and tested |
 | Settings: business details, staff list, who is using this device (recorded on every sale, count and delivery), data and storage explanation, confirmed reset. Avatar dropdown in the header for switching person, Settings, backup and privacy | Built and tested |
-| Sign-in and roles, business isolation, sync, backend API | Not started |
+| Sign-in and roles, business isolation, sync, backend API | Not started; target architecture and staged migration plan: [SUPABASE-ARCHITECTURE.md](./SUPABASE-ARCHITECTURE.md) |
 
 ## Quick start
 
@@ -115,7 +115,7 @@ Later:   IndexedDB  →  sync queue  →  API  →  PostgreSQL
                      same engine, same UI
 ```
 
-Because stock is a list of movements, syncing is mostly a matter of merging movement lists. Rules for conflicts, negative stock and duplicate delivery still need to be written (see the offline architecture doc when it exists).
+Because stock is a list of movements, syncing must preserve the ledger and transaction boundaries; it is not safe to merge arbitrary table snapshots. See [SUPABASE-ARCHITECTURE.md](./SUPABASE-ARCHITECTURE.md) for the selected backend, ownership model, and staged migration gates.
 
 ## Project structure
 
