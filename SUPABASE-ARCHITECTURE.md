@@ -1,18 +1,20 @@
 # Supabase production architecture and migration plan
 
-**Status:** Architecture plan only. No Supabase project, credentials, cloud schema, authentication, or synchronization code is configured yet.
+**Status:** Architecture plan plus unapplied multi-business SQL/RLS scaffolding. No Supabase project or credentials are configured; the migration and database tests have not been run against PostgreSQL. The app still has no sign-in or cloud data path.
 
 ## Verified starting point
 
 Stockly is an offline-first Vite app. Dexie stores the `stockly` database in IndexedDB, and `src/lib/engine.ts` contains the stock and transaction rules independently of the UI. Sales and purchase receipts are written atomically on-device; stock is derived from signed movements; receipt IDs make retries safe. Backup validation and restore are also covered by tests.
 
-The current local baseline passes all 115 unit tests and the production TypeScript/Vite build. The app has no authenticated identity or cloud system of record yet. In particular:
+The local baseline passes 116 unit tests and the production TypeScript/Vite build. The app has no authenticated identity or cloud system of record yet. In particular:
 
 - `BUSINESS_ID` is the fixed placeholder `demo-business`.
 - The staff list is a local roster of names, not login accounts or permissions.
 - Dexie v6 migrates numeric movement, sale-item, purchase-item, receipt-item, and audit IDs to UUID strings without dropping rows. New writes and restored legacy backups also receive stable UUID strings; parent/child references are preserved.
 - Business profile and device settings are stored locally. Device-specific settings must not be synchronized as business data.
 - Dexie versions 2–4 contain migrations that clear demo-era data. Those migrations predate real customer data; future upgrades must preserve real data and must not repeat that behavior.
+- `supabase/migrations/20261105123000_multi_business_foundation.sql` defines tenant-owned tables, business memberships, invitation/role RPCs, RLS, and restricted financial reads. Direct business-table writes are denied until transaction-safe domain RPCs exist.
+- `supabase/tests/tenant_isolation.test.sql` contains pgTAP checks for tenant separation, cross-business references, invitations, and restricted cost access. It requires a local Supabase/PostgreSQL test environment and has not been executed in this workspace.
 
 The existing local workflow remains the offline working store. Supabase becomes the cloud system of record after an explicit business setup or import; neither store should silently overwrite the other.
 
@@ -89,11 +91,10 @@ RLS and trusted write functions must enforce this matrix. Hiding a button in Rea
 
 ### 1. Business and membership schema
 
-- Create businesses and memberships with one owner on business creation.
-- Add roles, tenant keys, foreign keys, uniqueness constraints, and indexes.
-- Seed no production data and do not expose the browser client until the schema is reviewed.
+- Scaffolded in the SQL migration: businesses and owner membership are created atomically; invitations bind to the authenticated email; roles, tenant keys, composite foreign keys, scoped uniqueness, and indexes are defined.
+- No production data is seeded, and no browser client is connected.
 
-**Gate:** Database tests cover business creation, membership lifecycle, role invariants, and tenant-safe relationships.
+**Gate not yet met:** Run the migration and database tests against PostgreSQL; add lifecycle and role-invariant tests before connecting the app.
 
 ### 2. Secure ownership with RLS
 
@@ -102,7 +103,7 @@ RLS and trusted write functions must enforce this matrix. Hiding a button in Rea
 - Restrict sensitive updates and writes by role; protect owner membership from removal or demotion.
 - Keep ledger and audit rows append-only to application clients.
 
-**Gate:** Automated tests using two authenticated businesses and an anonymous client prove cross-business `SELECT`, `INSERT`, `UPDATE`, and `DELETE` attempts are denied through the REST API—not merely through the UI.
+**Scaffolded, gate not yet met:** pgTAP tests cover two authenticated businesses and direct-write denial, but have not run. REST/API checks for cross-business `SELECT`, `INSERT`, `UPDATE`, and `DELETE` are still required before adding the browser client.
 
 ### 3. Authentication
 
@@ -140,6 +141,12 @@ RLS and trusted write functions must enforce this matrix. Hiding a button in Rea
 
 ## First implementation scope
 
-Do not build the full cloud system in one change. The first code milestone should be the non-destructive Dexie migration/ID groundwork and its tests. The next milestone is the reviewed Supabase SQL schema plus RLS tests. Add authentication UI only after cross-business isolation is proven. Synchronization and role-aware UI follow as separate milestones.
+Do not build the full cloud system in one change. The existing Dexie v6 migration provides stable UUIDs for ledger and child rows. The next milestone is running and reviewing the SQL schema plus RLS tests against PostgreSQL, including REST-level cross-tenant checks. Add authentication UI only after cross-business isolation is proven. Synchronization and role-aware UI follow as separate milestones.
 
 No Supabase project URL, keys, or credentials belong in this repository until a project is provisioned. Use environment variables for the publishable key and keep privileged credentials out of client builds and source control.
+
+### Current implementation boundary
+
+The migration and pgTAP suite are scaffolding, not a deployed backend. The existing React screens still use per-device IndexedDB and must not be described as multi-device or multi-business. No authentication UI or Supabase client is enabled. Cloud table mutations remain closed until the server-side transaction RPCs can preserve the engine's stock, receipt, cancellation, and audit invariants.
+
+With Docker and the Supabase CLI installed, start the local stack and run `supabase test db` from the repository root before proceeding to REST/RLS tests.

@@ -42,7 +42,7 @@ Every stock change is recorded as a **movement** (a sale, a purchase, an adjustm
 | Store readiness: complete manifest, icons incl. maskable, screenshots, privacy policy page, release checker, store assets and listing text | Built; Chrome installability and offline verified |
 | Customers: add, edit, archive, delete (only with no purchases), optional on any sale, purchase history, total spent, average sale, last purchase | Built and tested |
 | Settings: business details, staff list, who is using this device (recorded on every sale, count and delivery), data and storage explanation, confirmed reset. Avatar dropdown in the header for switching person, Settings, backup and privacy | Built and tested |
-| Sign-in and roles, business isolation, sync, backend API | Not started; target architecture and staged migration plan: [SUPABASE-ARCHITECTURE.md](./SUPABASE-ARCHITECTURE.md) |
+| Sign-in and roles, business isolation, sync, backend API | Not active. Supabase schema/RLS scaffolding and pgTAP tests are present but unapplied and unverified; the app still uses local-only storage. See [SUPABASE-ARCHITECTURE.md](./SUPABASE-ARCHITECTURE.md). |
 
 ## Quick start
 
