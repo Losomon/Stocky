@@ -1,6 +1,8 @@
 # Supabase production architecture and migration plan
 
-**Status:** Architecture plan plus unapplied multi-business SQL/RLS scaffolding. No Supabase project or credentials are configured; the migration and database tests have not been run against PostgreSQL. The app still has no sign-in or cloud data path.
+**Status:** The multi-business schema, force-enabled RLS, membership/invitation/role RPCs, and restricted financial reads are defined in `supabase/migrations/20261105123000_multi_business_foundation.sql`, with pgTAP checks in `supabase/tests/tenant_isolation.test.sql`. No Supabase project or credentials are configured in this workspace, and neither the migration nor the pgTAP suite has been run against PostgreSQL here (no local Supabase/PostgreSQL available). Provision a Supabase project, run the migration, and execute `supabase test db` before connecting cloud workflows.
+
+The frontend now implements Supabase Auth sign-up/sign-in/sign-out, owner business creation (`create_business`), worker invitations (`create_member_invitation` / `claim_member_invitation`), membership and role management in Settings, and signs every local record with the authenticated `business_id` once signed in (configurable via `setBusinessId` in `src/config.ts`; falls back to the `demo-business` placeholder). When Supabase is not configured, the app stays fully local and offline exactly as before.
 
 ## Verified starting point
 
@@ -147,6 +149,6 @@ No Supabase project URL, keys, or credentials belong in this repository until a 
 
 ### Current implementation boundary
 
-The migration and pgTAP suite are scaffolding, not a deployed backend. The existing React screens still use per-device IndexedDB and must not be described as multi-device or multi-business. No authentication UI or Supabase client is enabled. Cloud table mutations remain closed until the server-side transaction RPCs can preserve the engine's stock, receipt, cancellation, and audit invariants.
+The migration and pgTAP suite define the database foundation but are not a deployed backend: they have not been executed against PostgreSQL in this workspace, and direct cloud table mutations remain revoked by RLS until transaction-safe server-side RPCs exist. The frontend has Supabase Auth, business creation, invitations, memberships and roles wired up, but cloud sync (outbox, pull cursor, conflict handling) is not built. The existing React screens still use per-device IndexedDB and must not be described as multi-device or multi-business until sync is implemented.
 
 With Docker and the Supabase CLI installed, start the local stack and run `supabase test db` from the repository root before proceeding to REST/RLS tests.

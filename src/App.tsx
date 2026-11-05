@@ -81,6 +81,7 @@ export default function App() {
 
   // Signed in: set this device up with the active business first, then run the
   // usual app with that business_id stamped on every local record.
+  if (!auth.businessId) return <CreateBusiness stock={stock} />;
   if (stock.state?.setup) return <Setup stock={stock} />;
   return <AppRoutes stock={stock} />;
 }

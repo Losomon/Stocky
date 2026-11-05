@@ -3,7 +3,7 @@
 Offline-first stock management for small shops. It does not just record stock. It tells the owner what needs attention.
 
 > **The name is a placeholder.** Change it in `brand.json` (not in the code). Other inventory apps called "Stockly" already exist on Google Play, so pick a distinctive name before you publish.
-> **Status:** v0.8.0. Feature-complete for a first release and **ready to be packaged for Google Play** (see `store/PLAY-STORE-GUIDE.md`). It starts empty for a real shop, has backup and restore, and installs as an app. It still has no sign-in, server copy or sync, so every phone holds its own data.
+> **Status:** v0.8.0. Feature-complete for a first release and **ready to be packaged for Google Play** (see `store/PLAY-STORE-GUIDE.md`). It starts empty for a real shop, has backup and restore, and installs as an app. It still has no server copy or sync, so every phone holds its own data. Optional Supabase sign-in adds accounts, per-business isolation and worker invitations on top of the local store.
 
 ---
 
@@ -42,7 +42,8 @@ Every stock change is recorded as a **movement** (a sale, a purchase, an adjustm
 | Store readiness: complete manifest, icons incl. maskable, screenshots, privacy policy page, release checker, store assets and listing text | Built; Chrome installability and offline verified |
 | Customers: add, edit, archive, delete (only with no purchases), optional on any sale, purchase history, total spent, average sale, last purchase | Built and tested |
 | Settings: business details, staff list, who is using this device (recorded on every sale, count and delivery), data and storage explanation, confirmed reset. Avatar dropdown in the header for switching person, Settings, backup and privacy | Built and tested |
-| Sign-in and roles, business isolation, sync, backend API | Not active. Supabase schema/RLS scaffolding and pgTAP tests are present but unapplied and unverified; the app still uses local-only storage. See [SUPABASE-ARCHITECTURE.md](./SUPABASE-ARCHITECTURE.md). |
+| Sign-in, roles and business isolation | Wired against Supabase Auth: sign up, sign in, sign out, owner business creation, worker invitations, memberships and roles. Every cloud table is tenant-scoped by `business_id` and protected by database-level RLS (see [SUPABASE-ARCHITECTURE.md](./SUPABASE-ARCHITECTURE.md)). When Supabase is not configured, the app stays fully local and offline exactly as before. |
+| Sync and backend API writes | Not active. Local-only storage; direct cloud table writes remain revoked by RLS until transaction-safe RPCs exist (see [SUPABASE-ARCHITECTURE.md](./SUPABASE-ARCHITECTURE.md)). |
 
 ## Quick start
 
@@ -71,6 +72,7 @@ The app seeds demo data into your browser on first load. The **New sale (demo)**
 - Dexie (IndexedDB) for local storage
 - vite-plugin-pwa for the service worker and manifest
 - Lucide icons, Recharts
+- Supabase Auth + PostgreSQL (optional cloud system of record; configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, see `.env.example`)
 
 ## How it works
 
@@ -176,7 +178,7 @@ The dashboard borrows layout patterns from the Innap admin template. This projec
 - The dashboard page is long on a phone. Sections are ordered by urgency, but there is no way to hide or reorder them yet.
 - Quantities are whole numbers only, so the unit list is whole units (piece, pack, bottle, carton, bag, box, dozen). Weighed units such as kg and litres need decimal quantities and are not offered yet.
 - Receipt numbers count up on one device. With several devices they could collide, so the server will need to assign them.
-- Any signed-in-looking user can cancel a sale or adjust stock. Roles and permissions come with authentication.
+- Any signed-in-looking user can cancel a sale or adjust stock on a device. Roles and permissions exist with Supabase authentication (owner/admin/manager/cashier, enforced server-side by RLS and RPCs for cloud data); local device use is not yet role-restricted.
 - No customer credit, balances or payments. Customers are records and purchase history only, on purpose, until research shows credit is needed. The sale already stores the customer, so credit can be added on top.
 - Upgrading from an earlier version clears the browser's demo data and reloads fresh demo data (v0.3 changed product IDs). Once real data exists, upgrades will need proper migrations.
 - Products have no images, variants or multiple suppliers yet.
@@ -186,7 +188,7 @@ The dashboard borrows layout patterns from the Innap admin template. This projec
 - Only a draft purchase can be edited. An ordered purchase's lines are locked.
 - The PWA icons are placeholders. Replace them in `public/` before launch.
 - The bundle is about 680 KB (203 KB gzipped). Split by route as screens are added.
-- No sign-in, roles, server copy, multi-device sync or multi-business isolation. Real shops can use it, but only with regular backups. The app does not encrypt the data or the backup files.
+- No server copy, multi-device sync or multi-business cloud isolation yet. Local-only storage; optional Supabase sign-in establishes per-business isolation at the database level. Real shops can use it locally, but only with regular backups.
 
 ## Roadmap
 
