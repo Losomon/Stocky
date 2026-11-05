@@ -10,7 +10,7 @@ The current local baseline passes all 115 unit tests and the production TypeScri
 
 - `BUSINESS_ID` is the fixed placeholder `demo-business`.
 - The staff list is a local roster of names, not login accounts or permissions.
-- Movement, sale-item, purchase-item, receipt-item, and audit IDs are IndexedDB auto-increment numbers. They are not safe identifiers across devices.
+- Dexie v6 migrates numeric movement, sale-item, purchase-item, receipt-item, and audit IDs to UUID strings without dropping rows. New writes and restored legacy backups also receive stable UUID strings; parent/child references are preserved.
 - Business profile and device settings are stored locally. Device-specific settings must not be synchronized as business data.
 - Dexie versions 2–4 contain migrations that clear demo-era data. Those migrations predate real customer data; future upgrades must preserve real data and must not repeat that behavior.
 
@@ -82,7 +82,7 @@ RLS and trusted write functions must enforce this matrix. Hiding a button in Rea
 
 - Keep the engine and local workflows running without network access.
 - Add forward-only Dexie migrations; remove any path that can clear real user data.
-- Add UUIDs to local child/ledger/audit rows and test migration from populated v5 data.
+- Implemented in Dexie v6: migrate populated v5 child/ledger/audit rows to UUID strings and test preservation of records, relationships, stock, audit history, and backup/restore.
 - Keep backups available before any ownership transfer or upgrade.
 
 **Gate:** Existing tests/build pass. A populated v5 database upgrades with the same business data, relations, stock totals, and audit history. Restore remains all-or-nothing.

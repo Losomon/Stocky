@@ -10,21 +10,21 @@ export interface Product {
   cost: number; price: number; min: number; barcode?: string; description?: string;
   archived: boolean; createdAt: number; updatedAt: number;
 }
-export interface Movement { id?: number; businessId: string; productId: string; type: MoveType; qty: number; ts: number; staff: string; refId?: string; reason?: string }
+export interface Movement { id?: string; businessId: string; productId: string; type: MoveType; qty: number; ts: number; staff: string; refId?: string; reason?: string }
 export interface Sale { id: string; businessId: string; receiptNo: string; ts: number; staff: string; payment: Payment; total: number; status: "completed" | "cancelled"; customerId?: string }
 /** unitPrice and unitCost are copied at sale time, so later price changes never rewrite history. */
-export interface SaleItem { id?: number; saleId: string; productId: string; qty: number; unitPrice: number; unitCost: number }
+export interface SaleItem { id?: string; saleId: string; productId: string; qty: number; unitPrice: number; unitCost: number }
 export interface StockCount { id: string; businessId: string; ts: number; staff: string; productId: string; expected: number; counted: number; diff: number; reason: string }
-export interface AuditEntry { id?: number; businessId: string; ts: number; staff: string; action: string; entity: string; entityId: string; oldValue?: string; newValue?: string }
+export interface AuditEntry { id?: string; businessId: string; ts: number; staff: string; action: string; entity: string; entityId: string; oldValue?: string; newValue?: string }
 export interface Supplier { id: string; businessId: string; name: string; contact?: string; phone?: string; email?: string; location?: string; notes?: string; archived: boolean; createdAt: number; updatedAt: number }
 /** Only draft, ordered and cancelled are stored. "Partially received" and "Received" are worked out from the receipts. */
 export type PurchaseBase = "draft" | "ordered" | "cancelled";
 export type PurchaseStatus = "draft" | "ordered" | "partial" | "received" | "cancelled";
 export interface Purchase { id: string; businessId: string; ref: string; supplierId: string; ts: number; staff: string; status: PurchaseBase; note?: string }
 /** unitCost is frozen on the purchase, so a later change to the product's cost never rewrites it. */
-export interface PurchaseItem { id?: number; purchaseId: string; productId: string; qty: number; unitCost: number }
+export interface PurchaseItem { id?: string; purchaseId: string; productId: string; qty: number; unitCost: number }
 export interface Receipt { id: string; businessId: string; purchaseId: string; ts: number; staff: string; note?: string }
-export interface ReceiptItem { id?: number; receiptId: string; productId: string; qty: number }
+export interface ReceiptItem { id?: string; receiptId: string; productId: string; qty: number }
 export interface Customer { id: string; businessId: string; name: string; phone?: string; email?: string; location?: string; notes?: string; archived: boolean; createdAt: number; updatedAt: number }
 export interface StaffMember { id: string; businessId: string; name: string; archived: boolean; createdAt: number }
 export interface BusinessProfile { name: string; phone?: string; location?: string }

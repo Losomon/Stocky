@@ -10,12 +10,23 @@ import { DEFAULT_BUSINESS, buildBusinessUpdate, buildSetup, buildCustomerArchive
 import { seed, type SeedData } from "./seed";
 import { APP_VERSION } from "./version";
 
+export const uid = () => (globalThis.crypto?.randomUUID?.() ?? "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+  const r = Math.random() * 16 | 0;
+  return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16);
+}));
+
+const isUuid = (id: unknown): id is string => typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+const withStableIds = <T extends object>(rows: readonly T[]) => rows.map((row) => {
+  const id = (row as T & { id?: unknown }).id;
+  return { ...row, id: isUuid(id) ? id : uid() };
+});
+
 const TABLES = ["products", "categories", "movements", "sales", "saleItems", "counts", "audit", "suppliers", "purchases", "purchaseItems", "receipts", "receiptItems", "customers", "staff", "settings"] as const;
 
 class StockDB extends Dexie {
-  products!: Table<Product, string>; categories!: Table<Category, string>; movements!: Table<Movement, number>; sales!: Table<Sale, string>;
-  saleItems!: Table<SaleItem, number>; counts!: Table<StockCount, string>; audit!: Table<AuditEntry, number>;
-  suppliers!: Table<Supplier, string>; purchases!: Table<Purchase, string>; purchaseItems!: Table<PurchaseItem, number>; receipts!: Table<Receipt, string>; receiptItems!: Table<ReceiptItem, number>;
+  products!: Table<Product, string>; categories!: Table<Category, string>; movements!: Table<Movement, string>; sales!: Table<Sale, string>;
+  saleItems!: Table<SaleItem, string>; counts!: Table<StockCount, string>; audit!: Table<AuditEntry, string>;
+  suppliers!: Table<Supplier, string>; purchases!: Table<Purchase, string>; purchaseItems!: Table<PurchaseItem, string>; receipts!: Table<Receipt, string>; receiptItems!: Table<ReceiptItem, string>;
   customers!: Table<Customer, string>; staff!: Table<StaffMember, string>; settings!: Table<{ key: string; value: unknown }, string>;
   constructor() {
     super("stockly");
@@ -31,6 +42,21 @@ class StockDB extends Dexie {
       .upgrade((tx) => Promise.all(["products", "categories", "movements", "sales", "saleItems", "counts", "audit"].map((t) => tx.table(t).clear())));
     // v5: customers, staff and settings. Purely additive, so nobody's existing data is touched. Missing staff and settings are filled in by ensureDefaults().
     this.version(5).stores({ customers: "id,name,phone", staff: "id,name", settings: "key" });
+    // v6: migrate numeric child/ledger keys to stable UUIDs without changing or dropping their rows.
+    this.version(6).stores({
+      products: "id", movements: "++id,productId,ts,refId", sales: "id,ts,receiptNo", saleItems: "++id,saleId,productId",
+      counts: "id,ts,productId", audit: "++id,ts,entity", suppliers: "id,name", purchases: "id,ts,supplierId",
+      purchaseItems: "++id,purchaseId,productId", receipts: "id,purchaseId,ts", receiptItems: "++id,receiptId,productId",
+      customers: "id,name,phone", staff: "id,name", settings: "key",
+    }).upgrade(async (tx) => {
+      for (const name of ["movements", "saleItems", "purchaseItems", "receiptItems", "audit"]) {
+        const table = tx.table(name);
+        const rows = await table.toArray();
+        if (!rows.length) continue;
+        await table.clear();
+        await table.bulkPut(withStableIds(rows));
+      }
+    });
   }
 }
 const db = new StockDB();
@@ -39,7 +65,6 @@ let mem: MemState | null = null; // fallback when IndexedDB is blocked
 const emptyMem = (): MemState => ({ categories: [], products: [], movements: [], sales: [], saleItems: [], counts: [], audit: [], suppliers: [], purchases: [], purchaseItems: [], receipts: [], receiptItems: [], customers: [], staff: [], business: DEFAULT_BUSINESS, deviceStaffId: "", onboarded: false, demo: false, lastBackupAt: null });
 
 let mode: "device" | "memory" = "device";
-let memId = 1_000_000;
 
 export interface Snapshot { P: Product[]; CAT: Category[]; M: Movement[]; S: Sale[]; SI: SaleItem[]; C: StockCount[]; SUP: Supplier[]; PU: Purchase[]; PI: PurchaseItem[]; RC: Receipt[]; RI: ReceiptItem[]; CUS: Customer[]; STAFF: StaffMember[]; business: BusinessProfile; deviceStaffId: string | null; setup: boolean; demo: boolean; lastBackupAt: number | null; mode: "device" | "memory" }
 export type Result<T> = { ok: true; value: T } | Fail;
@@ -87,8 +112,6 @@ export interface StockCtx {
 /** The name actions are recorded under on this device. */
 export const deviceStaffName = (s: Pick<Snapshot, "STAFF" | "deviceStaffId">) =>
   (s.STAFF.find((x) => x.id === s.deviceStaffId && !x.archived) ?? s.STAFF.find((x) => !x.archived))?.name ?? "Unassigned";
-export const uid = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`);
-
 async function readSettings() {
   const rows = await db.settings.toArray();
   const get = (k: string) => rows.find((r) => r.key === k)?.value;
@@ -128,8 +151,8 @@ async function write(w: Writes) {
   }
   const m = (mem ??= emptyMem());
   if (w.sale) m.sales.push(w.sale);
-  w.items?.forEach((i) => m.saleItems.push({ ...i, id: ++memId }));
-  w.movements.forEach((x) => m.movements.push({ ...x, id: ++memId }));
+  w.items?.forEach((i) => m.saleItems.push(i));
+  w.movements.forEach((x) => m.movements.push(x));
   if (w.count) m.counts.push(w.count);
   const put = <T extends { id: string }>(arr: T[], x: T) => { const i = arr.findIndex((r) => r.id === x.id); if (i >= 0) arr[i] = x; else arr.push(x); };
   if (w.product) put(m.products, w.product);
@@ -140,9 +163,9 @@ async function write(w: Writes) {
   if (w.deleteSupplierId) m.suppliers = m.suppliers.filter((x) => x.id !== w.deleteSupplierId);
   if (w.purchase) put(m.purchases, w.purchase);
   if (w.replaceItemsFor) m.purchaseItems = m.purchaseItems.filter((i) => i.purchaseId !== w.replaceItemsFor);
-  w.purchaseItems?.forEach((i) => m.purchaseItems.push({ ...i, id: ++memId }));
+  w.purchaseItems?.forEach((i) => m.purchaseItems.push(i));
   if (w.receipt) m.receipts.push(w.receipt);
-  w.receiptItems?.forEach((i) => m.receiptItems.push({ ...i, id: ++memId }));
+  w.receiptItems?.forEach((i) => m.receiptItems.push(i));
   if (w.customer) put(m.customers, w.customer);
   if (w.deleteCustomerId) m.customers = m.customers.filter((x) => x.id !== w.deleteCustomerId);
   if (w.staffMember) put(m.staff, w.staffMember);
@@ -163,6 +186,11 @@ async function transact<T extends object>(plan: (s: Snapshot) => ({ ok: true } &
   const run = async (): Promise<Result<T>> => {
     const r = plan(await read());
     if (!r.ok) return r;
+    if (r.items) r.items = withStableIds(r.items);
+    r.movements = withStableIds(r.movements);
+    if (r.purchaseItems) r.purchaseItems = withStableIds(r.purchaseItems);
+    if (r.receiptItems) r.receiptItems = withStableIds(r.receiptItems);
+    r.audit = withStableIds(r.audit);
     await write(r);
     return { ok: true, value: r as unknown as T };
   };
@@ -197,6 +225,11 @@ async function load(): Promise<Snapshot> {
 
 async function loadDemoData() {
   const s = seed();
+  s.movements = withStableIds(s.movements);
+  s.saleItems = withStableIds(s.saleItems);
+  s.audit = withStableIds(s.audit);
+  s.purchaseItems = withStableIds(s.purchaseItems);
+  s.receiptItems = withStableIds(s.receiptItems);
   if (mode === "device") {
     await db.transaction("rw", TABLES.map((t) => db[t]), async () => {
       await Promise.all(TABLES.map((t) => db[t].clear()));
@@ -223,6 +256,9 @@ async function restoreBackupFile(raw: unknown): Promise<Result<BackupSummary>> {
   const v = validateBackup(raw);
   if (!v.ok) return { ok: false, errors: v.errors };
   const b = v.backup, me = b.deviceStaffId ?? (b.data.staff.find((x) => x.archived === false)?.id as string);
+  for (const t of ["movements", "saleItems", "purchaseItems", "receiptItems", "audit"] as const) {
+    b.data[t] = withStableIds(b.data[t]);
+  }
   const settings = [{ key: "business", value: b.business }, { key: "deviceStaffId", value: me }, { key: "onboarded", value: true }, { key: "demo", value: b.demo }, { key: "lastBackupAt", value: b.exportedAt || Date.now() }];
   try {
     if (mode === "device") {
