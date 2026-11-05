@@ -1,0 +1,14 @@
+// Supabase client. The app stays fully offline when these are unset: every
+// helper below checks `hasSupabase` first and degrades gracefully.
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+export const hasSupabase = Boolean(supabaseUrl && supabaseAnonKey);
+
+export const supabase: SupabaseClient | null = hasSupabase
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: true, autoRefreshToken: true },
+    })
+  : null;

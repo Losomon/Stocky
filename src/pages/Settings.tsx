@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useOutletContext } from "react-router-dom";
-import { AlertTriangle, Check, Download, HardDrive, Share2 } from "lucide-react";
+import { AlertTriangle, Check, Copy, Download, HardDrive, Mail, Plus, Share2, Users } from "lucide-react";
 import { APP_NAME } from "../config";
 import { backupFileName } from "../lib/backup";
 import { APP_VERSION } from "../lib/version";
 import { daysAgo } from "../lib/format";
+import { hasSupabase } from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
+import { fetchMembers, inviteMember, removeMember, setMemberRole, type BusinessMember, type BusinessRole } from "../lib/business";
 import RestoreBackup from "../components/RestoreBackup";
 import { staffInUse } from "../lib/people";
 import { deviceStaffName, type StockCtx } from "../lib/store";
@@ -12,6 +15,7 @@ import { Badge, Card, Errors, btnGhost, btnPrimary, fieldCls } from "../componen
 
 export default function Settings() {
   const ctx = useOutletContext<StockCtx>();
+  const auth = useAuth();
   const nav = useNavigate(), loc = useLocation();
   const { state, updateBusiness, createStaff, setStaffArchived, deleteStaff, setDeviceStaff, eraseAll, exportBackup, markBackedUp } = ctx;
   const [biz, setBiz] = useState<{ name: string; phone: string; location: string } | null>(null);
@@ -23,8 +27,58 @@ export default function Settings() {
   useEffect(() => { if (state && loc.hash === "#backup") document.getElementById("backup")?.scrollIntoView(); }, [state, loc.hash]);
   useEffect(() => { void navigator.storage?.persisted?.().then(setPersisted).catch(() => setPersisted(null)); }, []);
   useEffect(() => { if (state && !biz) setBiz({ name: state.business.name, phone: state.business.phone ?? "", location: state.business.location ?? "" }); }, [state, biz]);
+
+  /* ---------------- cloud team members ---------------- */
+  const [members, setMembers] = useState<BusinessMember[]>([]);
+  const [membersErr, setMembersErr] = useState<string[]>([]);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<Exclude<BusinessRole, "owner">>("cashier");
+  const [inviteErr, setInviteErr] = useState<string[]>([]);
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [roleBusy, setRoleBusy] = useState<Set<string>>(new Set());
+  const [removeBusy, setRemoveBusy] = useState<Set<string>>(new Set());
+  const myMembership = auth.user ? members.find((m) => m.user_id === auth.user!.id) : undefined;
+  const canManage = myMembership ? ["owner", "admin"].includes(myMembership.role) : false;
+  const amOwner = myMembership?.role === "owner";
+  const loadMembers = async () => {
+    if (!hasSupabase || !auth.businessId) return;
+    const r = await fetchMembers(auth.businessId);
+    if (!r.ok) setMembersErr([r.error]);
+    else setMembers(r.members);
+  };
+  useEffect(() => { void loadMembers(); }, [hasSupabase, auth.businessId, state]);
+  const roleOf = (userId: string) => members.find((m) => m.user_id === userId)?.role;
+  const handleInvite = async () => {
+    setInviteErr([]);
+    if (!auth.businessId) return;
+    setInviteBusy(true);
+    const r = await inviteMember(auth.businessId, inviteEmail, inviteRole);
+    setInviteBusy(false);
+    if (!r.ok) { setInviteErr([r.error]); return; }
+    setInviteErr([]);
+    setInviteEmail("");
+    setInviteRole("cashier");
+    await loadMembers();
+  };
+  const handleRoleChange = async (userId: string, role: Exclude<BusinessRole, "owner">) => {
+    if (!auth.businessId || userId === auth.user?.id || roleOf(userId) === "owner") return;
+    setRoleBusy((s) => new Set([...s, userId]));
+    const r = await setMemberRole(auth.businessId, userId, role);
+    setRoleBusy((s) => { const n = new Set(s); n.delete(userId); return n; });
+    if (!r.ok) { setMembersErr([r.error]); return; }
+    await loadMembers();
+  };
+  const handleRemove = async (userId: string) => {
+    if (!auth.businessId || userId === auth.user?.id || roleOf(userId) === "owner") return;
+    if (!window.confirm("Remove this person from the business? They will lose access to its data.")) return;
+    setRemoveBusy((s) => new Set([...s, userId]));
+    const r = await removeMember(auth.businessId, userId);
+    setRemoveBusy((s) => { const n = new Set(s); n.delete(userId); return n; });
+    if (!r.ok) { setMembersErr([r.error]); return; }
+    await loadMembers();
+  };
   if (!state || !biz) return <p className="text-muted">Loading settings…</p>;
-  const memory = state.mode === "memory", me = deviceStaffName(state);
+  const memory = state.mode === "memory", deviceMe = deviceStaffName(state);
   const staff = [...state.STAFF].sort((a, b) => Number(a.archived) - Number(b.archived) || a.name.localeCompare(b.name));
   const saveFile = async () => {
     const text = JSON.stringify(await exportBackup()), url = URL.createObjectURL(new Blob([text], { type: "application/json" })), a = document.createElement("a");
@@ -57,7 +111,7 @@ export default function Settings() {
 
       <Card className="space-y-3">
         <h2 className="text-lg font-semibold">Staff</h2>
-        <p className="text-sm text-muted">Sales, deliveries and stock counts on this device are recorded under <b className="text-ink">{me}</b>. Pick who is using it. There are no passwords yet, so anyone using the app can switch.</p>
+        <p className="text-sm text-muted">Sales, deliveries and stock counts on this device are recorded under <b className="text-ink">{deviceMe}</b>. Pick who is using it. There are no passwords yet, so anyone using the app can switch.</p>
         <Errors list={staffErr} />
         <ul className="divide-y divide-line">
           {staff.map((p) => {
@@ -80,6 +134,60 @@ export default function Settings() {
         </div>
         <p className="text-sm text-muted">Names can't be changed, because past records keep the name they were made under. Archive someone who leaves.</p>
       </Card>
+
+      {hasSupabase && auth.businessId && (
+        <Card className="space-y-3">
+          <h2 className="flex items-center gap-2 text-lg font-semibold"><Users size={20} />Team members</h2>
+          <p className="text-sm text-muted">People who can sign in to this business and what they may do. Access is checked on the server, so workers only ever see their own business's data.</p>
+          {membersErr.length > 0 && <Errors list={membersErr} />}
+          <ul className="divide-y divide-line">
+            {members.length === 0 ? <li className="py-3 text-sm text-muted">No members yet.</li> :
+              members.map((m) => {
+                const isMe = m.user_id === auth.user?.id;
+                return (
+                  <li key={m.user_id} className="flex flex-wrap items-center justify-between gap-2 py-3">
+                    <span className="flex items-center gap-2"><span className="grid size-10 place-items-center rounded-full bg-soft font-bold text-pdark" aria-hidden>{(m.staff_name ?? m.user_id).slice(0, 2).toUpperCase()}</span>
+                      <span className="font-medium">{m.staff_name || (isMe ? "You" : m.user_id.slice(0, 8))}</span>{isMe && <Badge tone="ok">You</Badge>}{m.role === "owner" && <Badge tone="muted">Owner</Badge>}</span>
+                    <span className="flex flex-wrap gap-2">
+                      <span className="inline-flex items-center gap-1 text-sm font-medium text-muted">
+                        <span className="font-semibold">{m.role}</span>
+                        {canManage && m.role !== "owner" && !isMe && (
+                          <select value={m.role} onChange={(e) => void handleRoleChange(m.user_id, e.target.value as Exclude<BusinessRole, "owner">)} disabled={roleBusy.has(m.user_id)} className="text-sm border border-line rounded-md px-2 py-1 bg-surface">
+                            <option value="admin">Admin</option>
+                            <option value="manager">Manager</option>
+                            <option value="cashier">Cashier</option>
+                          </select>
+                        )}
+                      </span>
+                      {canManage && m.role !== "owner" && !isMe && (
+                        <button disabled={removeBusy.has(m.user_id)} onClick={() => void handleRemove(m.user_id)} className={btnGhost}>Remove</button>
+                      )}
+                    </span>
+                  </li>
+                );
+              })
+            }
+          </ul>
+          {canManage && (
+            <div className="pt-2">
+              <h3 className="text-sm font-semibold mb-2">Invite a worker</h3>
+              <Errors list={inviteErr} />
+              <div className="grid gap-3 sm:grid-cols-3 items-end">
+                <input className={fieldCls} type="email" placeholder="worker@example.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
+                <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as Exclude<BusinessRole, "owner">)} className={fieldCls}>
+                  <option value="admin">Admin</option>
+                  <option value="manager">Manager</option>
+                  <option value="cashier">Cashier</option>
+                </select>
+                <button disabled={inviteBusy} onClick={handleInvite} className={btnPrimary}>Invite</button>
+              </div>
+              <p className="text-sm text-muted">The invitation link is shown after you invite. Copy it and send it to the worker through a trusted channel (WhatsApp, SMS, email). They sign in with their own account and join only this business.</p>
+              {inviteBusy && <p className="text-sm text-muted">Sending invitation…</p>}
+            </div>
+          )}
+          {!canManage && <p className="text-sm text-muted">Your role ({myMembership?.role}) does not allow inviting or managing team members.</p>}
+        </Card>
+      )}
 
       <Card className="space-y-3">
         <h2 className="flex items-center gap-2 text-lg font-semibold">{memory ? <AlertTriangle size={20} className="text-bad" /> : <HardDrive size={20} className="text-muted" />}Where your data is</h2>

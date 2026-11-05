@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Check, Download, Settings as Cog, ShieldCheck } from "lucide-react";
+import { Check, Download, LogOut, Settings as Cog, ShieldCheck } from "lucide-react";
 import { deviceStaffName, type StockCtx } from "../lib/store";
+import { useAuth } from "../context/AuthContext";
+import { hasSupabase } from "../lib/supabase";
 
 /** The round avatar in the header. Opens a menu: who is using this phone, switch person, settings, back up, privacy. */
 export default function AvatarMenu({ stock }: { stock: StockCtx }) {
   const { state, setDeviceStaff } = stock;
+  const auth = useAuth();
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null), button = useRef<HTMLButtonElement>(null), loc = useLocation();
   const who = state ? deviceStaffName(state) : "";
@@ -42,6 +45,12 @@ export default function AvatarMenu({ stock }: { stock: StockCtx }) {
           <Link to="/settings" role="menuitem" onClick={() => close()} className={item}><Cog size={20} aria-hidden />Settings</Link>
           <Link to="/settings#backup" role="menuitem" onClick={() => close()} className={item}><Download size={20} aria-hidden />Back up your data</Link>
           <a href="/privacy.html" target="_blank" rel="noopener" role="menuitem" onClick={() => close()} className={item}><ShieldCheck size={20} aria-hidden />Privacy policy</a>
+          {hasSupabase && auth.user && (
+            <>
+              <div className="my-1 border-t border-line" />
+              <button role="menuitem" onClick={async () => { await auth.signOut(); close(); }} className={`${item} text-bad`}><LogOut size={20} aria-hidden />Sign out</button>
+            </>
+          )}
           <p className="px-3 py-2 text-xs text-muted">There are no passwords yet, so anyone using this phone can switch person.</p>
         </div>
       )}
