@@ -80,6 +80,13 @@ export const fetchBusiness = async (businessId: string): Promise<{ ok: true; bus
   return { ok: true, business: data as unknown as Business };
 };
 
+export const fetchMyBusinesses = async (): Promise<{ ok: true; businesses: Business[] } | RpcError> => {
+  if (!supabase) return { ok: false, error: "Supabase is not configured." };
+  const { data, error } = await supabase.from("businesses").select("*").order("created_at", { ascending: true });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, businesses: (data ?? []) as unknown as Business[] };
+};
+
 export const fetchMembers = async (businessId: string): Promise<{ ok: true; members: BusinessMember[] } | RpcError> => {
   if (!supabase) return { ok: false, error: "Supabase is not configured." };
   const { data, error } = await supabase

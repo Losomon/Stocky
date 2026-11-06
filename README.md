@@ -3,7 +3,7 @@
 Offline-first stock management for small shops. It does not just record stock. It tells the owner what needs attention.
 
 > **The name is a placeholder.** Change it in `brand.json` (not in the code). Other inventory apps called "Stockly" already exist on Google Play, so pick a distinctive name before you publish.
-> **Status:** v0.8.0. Feature-complete for a first release and **ready to be packaged for Google Play** (see `store/PLAY-STORE-GUIDE.md`). It starts empty for a real shop, has backup and restore, and installs as an app. It still has no server copy or sync, so every phone holds its own data. Optional Supabase sign-in adds accounts, per-business isolation and worker invitations on top of the local store.
+> **Status:** v0.8.0. It starts empty for a real shop, has backup and restore, and installs as an app. It still has no server copy or sync, so every phone holds its own data. Supabase sign-in and invitations are scaffolding for account access; business records remain local. On one device, each selected business uses a separate IndexedDB database.
 
 ---
 
@@ -30,6 +30,7 @@ Every stock change is recorded as a **movement** (a sale, a purchase, an adjustm
 | Sale records with prices frozen at sale time, stock validation, duplicate protection | Built and tested |
 | Atomic writes (a sale saves completely or not at all) and an audit log (stored, no screen yet) | Built and tested |
 | Local data (IndexedDB via Dexie), upgrade from the v0.1 demo database | Built and tested |
+| Local tenant separation | Each selected business uses a separate IndexedDB database on this device. This is not server sync or a substitute for PostgreSQL RLS. |
 | Installable PWA with service worker | Configured (production build only) |
 | Suppliers: add, edit, archive, delete (only with no purchases), purchase history and totals | Built and tested |
 | Purchases: draft, ordered, partial and full receiving, cancel, list with search and filters | Built and tested |
@@ -42,8 +43,10 @@ Every stock change is recorded as a **movement** (a sale, a purchase, an adjustm
 | Store readiness: complete manifest, icons incl. maskable, screenshots, privacy policy page, release checker, store assets and listing text | Built; Chrome installability and offline verified |
 | Customers: add, edit, archive, delete (only with no purchases), optional on any sale, purchase history, total spent, average sale, last purchase | Built and tested |
 | Settings: business details, staff list, who is using this device (recorded on every sale, count and delivery), data and storage explanation, confirmed reset. Avatar dropdown in the header for switching person, Settings, backup and privacy | Built and tested |
-| Sign-in, roles and business isolation | Wired against Supabase Auth: sign up, sign in, sign out, owner business creation, worker invitations, memberships and roles. Every cloud table is tenant-scoped by `business_id` and protected by database-level RLS (see [SUPABASE-ARCHITECTURE.md](./SUPABASE-ARCHITECTURE.md)). When Supabase is not configured, the app stays fully local and offline exactly as before. |
-| Sync and backend API writes | Not active. Local-only storage; direct cloud table writes remain revoked by RLS until transaction-safe RPCs exist (see [SUPABASE-ARCHITECTURE.md](./SUPABASE-ARCHITECTURE.md)). |
+| Sign-in, memberships and invitations | Frontend flows are wired against the Supabase Auth and SQL RPC interfaces. The migration must be deployed to a Supabase project; no project is configured in this workspace. Invitation links must be shared manually. See [SUPABASE-ARCHITECTURE.md](./SUPABASE-ARCHITECTURE.md). |
+| Business data isolation and multi-device access | Not complete. Database schema and RLS are scaffolded, but the migration has not been run here. Products, sales, purchases and inventory still live only in this device's IndexedDB; signing in does not sync them or make another device's records available. |
+| Local staff permissions and audit screen | Not complete. Membership roles do not yet restrict local inventory actions, and the audit log has no screen. |
+| Sync and backend API writes | Not active. Direct cloud table writes remain revoked until transaction-safe RPCs exist. Do not use the account foundation as a production multi-device inventory system yet. |
 
 ## Quick start
 

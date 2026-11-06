@@ -7,8 +7,8 @@
   "themeColor": "#C0286B",
   "backgroundColor": "#FAFAFA",
   "siteUrl": "https://stocky-orcin.vercel.app",
-  "packageId": "CHANGE-ME.com.yourname.appname",
-  "developerName": "CHANGE-ME your name or business",
-  "contactEmail": "CHANGE-ME@example.com",
-  "privacyUpdated": "2026-10-14"
+  "packageId": "com.loxorasystems.stockly",
+  "developerName": "LOXORA SYSTEMS",
+  "contactEmail": "solomboni5@gmail.com",
+  "privacyUpdated": "2026-11-06"
 }

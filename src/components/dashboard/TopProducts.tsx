@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import type { ProductSales } from "../../lib/analytics";
 import { n0 } from "../../lib/format";
 import { Card, Empty } from "../ui";
-import { Toggle, type Period } from "./Trends";
+import { Toggle, type Period } from "./ChartControls";
 
 const KEYS = [["sales", "By sales"], ["profit", "By profit"], ["units", "By units"]] as const;
 type Key = (typeof KEYS)[number][0];

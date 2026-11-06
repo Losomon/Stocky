@@ -15,6 +15,17 @@ const brandHtml = (): Plugin => ({
 
 export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          const path = id.replaceAll("\\", "/");
+          if (/\/node_modules\/(react|react-dom|scheduler|react-router|react-router-dom|@remix-run\/router)\//.test(path)) return "framework";
+          if (path.includes("/node_modules/@supabase/")) return "supabase";
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),

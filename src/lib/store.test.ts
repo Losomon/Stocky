@@ -298,4 +298,33 @@ describe("store (IndexedDB)", () => {
     const still = await s.load();
     expect(stockOf(still)).toBe(26); expect(still.S).toHaveLength(1);
   });
+
+  it("keeps local records separate when the active business changes", async () => {
+    const { setBusinessId } = await import("../config");
+    const { _internals: s } = await import("./store");
+    const E = await import("./engine");
+    const businessA = s.uid(), businessB = s.uid();
+    try {
+      setBusinessId(businessA);
+      expect((await s.load()).P).toHaveLength(0);
+      const made = await s.transact<{ product: import("./engine").Product }>((snapshot) =>
+        E.buildProductCreate({
+          businessId: businessA,
+          id: s.uid(),
+          input: { name: "Private item", sku: "PRIVATE-1", unit: "piece", cost: 1, price: 2, min: 0, openingStock: 4 },
+          P: snapshot.P,
+          C: snapshot.CAT,
+          staff: "Owner",
+          now: 1,
+        }));
+      expect(made.ok).toBe(true);
+
+      setBusinessId(businessB);
+      expect((await s.load()).P).toHaveLength(0);
+      setBusinessId(businessA);
+      expect((await s.load()).P.map((product) => product.name)).toEqual(["Private item"]);
+    } finally {
+      setBusinessId("demo-business");
+    }
+  });
 });

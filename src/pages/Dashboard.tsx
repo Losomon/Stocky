@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { activityFeed, attention, restockPlan, stockLosses, topProducts, totalsBetween, trend, valueByCategory } from "../lib/analytics";
@@ -9,7 +9,9 @@ import Attention from "../components/dashboard/Attention";
 import StockAnalysis from "../components/dashboard/StockAnalysis";
 import Summary from "../components/dashboard/Summary";
 import TopProducts from "../components/dashboard/TopProducts";
-import Trends, { type Period } from "../components/dashboard/Trends";
+import type { Period } from "../components/dashboard/ChartControls";
+
+const Trends = lazy(() => import("../components/dashboard/Trends"));
 
 export default function Dashboard() {
   const { state } = useOutletContext<StockCtx>();
@@ -34,7 +36,7 @@ export default function Dashboard() {
       <Summary today={a.today.sales} delta={d.delta} profit={a.today.profit} margin={a.today.margin} stockValue={d.stockValue} productCount={d.productCount} lowCount={d.low.length} outCount={d.low.filter((i) => i.status === "out").length} />
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <div className="min-w-0 xl:order-last"><Attention items={a.attention} /></div>
-        <div className="min-w-0 xl:col-span-2"><Trends days={days} setDays={setDays} data={period.trend} losses={period.losses} /></div>
+        <div className="min-w-0 xl:col-span-2"><Suspense fallback={<div className="min-h-64 animate-pulse rounded-2xl bg-soft" aria-label="Loading sales chart" />}><Trends days={days} setDays={setDays} data={period.trend} losses={period.losses} /></Suspense></div>
       </div>
       <TopProducts rows={period.top} days={days} setDays={setDays} />
       <StockAnalysis restock={a.restock} slow={d.slow} value={a.value} />

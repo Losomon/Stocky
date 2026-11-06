@@ -7,7 +7,7 @@ import { APP_VERSION } from "../lib/version";
 import { daysAgo } from "../lib/format";
 import { hasSupabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
-import { fetchMembers, inviteMember, removeMember, setMemberRole, type BusinessMember, type BusinessRole } from "../lib/business";
+import { fetchMembers, inviteMember, invitationLink, removeMember, setMemberRole, type BusinessMember, type BusinessRole } from "../lib/business";
 import RestoreBackup from "../components/RestoreBackup";
 import { staffInUse } from "../lib/people";
 import { deviceStaffName, type StockCtx } from "../lib/store";
@@ -35,6 +35,8 @@ export default function Settings() {
   const [inviteRole, setInviteRole] = useState<Exclude<BusinessRole, "owner">>("cashier");
   const [inviteErr, setInviteErr] = useState<string[]>([]);
   const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteLink, setInviteLink] = useState("");
+  const [inviteCopied, setInviteCopied] = useState(false);
   const [roleBusy, setRoleBusy] = useState<Set<string>>(new Set());
   const [removeBusy, setRemoveBusy] = useState<Set<string>>(new Set());
   const myMembership = auth.user ? members.find((m) => m.user_id === auth.user!.id) : undefined;
@@ -56,6 +58,8 @@ export default function Settings() {
     setInviteBusy(false);
     if (!r.ok) { setInviteErr([r.error]); return; }
     setInviteErr([]);
+    setInviteLink(invitationLink(r.token));
+    setInviteCopied(false);
     setInviteEmail("");
     setInviteRole("cashier");
     await loadMembers();
@@ -96,6 +100,13 @@ export default function Settings() {
     <div className="mx-auto max-w-2xl space-y-4">
       <h1 className="text-2xl font-bold sm:text-3xl">Settings</h1>
 
+      {auth.businesses.length > 1 && <Card className="space-y-2">
+        <h2 className="text-lg font-semibold">Switch business</h2>
+        {auth.businesses.map((item) => <button key={item.id} onClick={() => void auth.setActiveBusiness(item.id).then(() => nav("/", { replace: true })).catch((e: unknown) => setBizErr([e instanceof Error ? e.message : "Could not switch business."]))} className={`${btnGhost} w-full justify-start`}>
+          {item.name}{item.id === auth.businessId ? " (current)" : ""}
+        </button>)}
+      </Card>}
+
       <Card className="space-y-3">
         <h2 className="text-lg font-semibold">Your business</h2>
         <Errors list={bizErr} />
@@ -107,6 +118,7 @@ export default function Settings() {
         <div className="flex items-center gap-3"><button onClick={() => void run(updateBusiness(biz), setBizErr, () => setSaved(true))} className={btnPrimary}>Save business details</button>
           {saved && <span role="status" className="flex items-center gap-1 text-sm font-medium text-ok"><Check size={16} />Saved</span>}</div>
         <p className="text-sm text-muted">Currency is Kenya shillings (KES).</p>
+        {hasSupabase && <p className="text-sm text-muted">These profile edits are stored on this device only; the business profile is not yet synchronized to Supabase.</p>}
       </Card>
 
       <Card className="space-y-3">
@@ -138,7 +150,7 @@ export default function Settings() {
       {hasSupabase && auth.businessId && (
         <Card className="space-y-3">
           <h2 className="flex items-center gap-2 text-lg font-semibold"><Users size={20} />Team members</h2>
-          <p className="text-sm text-muted">People who can sign in to this business and what they may do. Access is checked on the server, so workers only ever see their own business's data.</p>
+          <p className="text-sm text-muted">People who can sign in to this business and their assigned account role. Membership and cloud-table reads are scoped by database policies, but role restrictions are not yet applied to local sales and inventory actions. Product, sales and inventory records are not synced to the server; they remain on this device.</p>
           {membersErr.length > 0 && <Errors list={membersErr} />}
           <ul className="divide-y divide-line">
             {members.length === 0 ? <li className="py-3 text-sm text-muted">No members yet.</li> :
@@ -183,6 +195,11 @@ export default function Settings() {
               </div>
               <p className="text-sm text-muted">The invitation link is shown after you invite. Copy it and send it to the worker through a trusted channel (WhatsApp, SMS, email). They sign in with their own account and join only this business.</p>
               {inviteBusy && <p className="text-sm text-muted">Sending invitation…</p>}
+              {inviteLink && <div className="space-y-2 rounded-xl border border-line p-3">
+                <label className="block"><span className="mb-1 block text-sm font-medium">Invitation link (valid for 7 days)</span><input className={fieldCls} readOnly value={inviteLink} onFocus={(e) => e.currentTarget.select()} /></label>
+                <button onClick={() => void navigator.clipboard.writeText(inviteLink).then(() => setInviteCopied(true)).catch(() => setInviteErr(["Could not copy the link. Select it above and copy it manually."]))} className={btnGhost}><Copy size={18} />{inviteCopied ? "Copied" : "Copy invitation link"}</button>
+                <p className="text-xs text-muted">Send this link only to the invited person. It grants access to this business after they sign in with the invited email.</p>
+              </div>}
             </div>
           )}
           {!canManage && <p className="text-sm text-muted">Your role ({myMembership?.role}) does not allow inviting or managing team members.</p>}
@@ -195,13 +212,13 @@ export default function Settings() {
           ? <p className="font-medium text-bad">This browser is blocking storage, so nothing you enter is being kept. It will be gone when you close or reload the page. Try another browser, or leave private browsing.</p>
           : <p className="font-medium">Everything you enter is saved on this device only.</p>}
         <ul className="list-disc space-y-1 pl-5 text-sm">
-          <li>It is <b>not synced</b> to a server and <b>not backed up</b>. There is no online copy.</li>
+          <li>Product, sales and inventory data is <b>not synced</b> to a server and <b>not backed up</b>. There is no online copy.</li>
           <li>Other phones and computers <b>can't see it</b>. Each device has its own separate data.</li>
           <li>It works without internet. Sales, deliveries and counts save normally while you are offline.</li>
           <li>Clearing this site's data, clearing the browser's history and storage, or uninstalling the app <b>erases it for good</b>.</li>
           <li>Storage protection from automatic clearing: <b>{persisted === null ? "unknown on this browser" : persisted ? "on" : "off (the browser may clear it if the phone runs low on space)"}</b>.</li>
         </ul>
-        {state.demo ? <p className="text-sm text-muted">This is demo data for trying the workflow. Please don't enter real business records until you erase it and set up your shop.</p> : <p className="text-sm text-muted">There is no sign-in and no automatic backup or sync yet. Make a backup file regularly, and before you change phones.</p>}
+        {state.demo ? <p className="text-sm text-muted">This is demo data for trying the workflow. Please don't enter real business records until you erase it and set up your shop.</p> : <p className="text-sm text-muted">Sign-in and business memberships do not synchronize your records yet. Make a backup file regularly, and before you change phones.</p>}
       </Card>
 
       <Card className="space-y-3">
