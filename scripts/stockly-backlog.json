@@ -1,0 +1,507 @@
+{
+  "repo": "DanielNju/stock-managment",
+  "milestones": [
+    {
+      "title": "M1 — Multi-business foundation",
+      "description": "Critical. Multi-tenant foundation: Supabase, schema, auth, business/membership, invitations, RLS, isolation tests.",
+      "state": "open"
+    },
+    {
+      "title": "M2 — Transaction integrity",
+      "description": "Critical. Migrate inventory/sales/purchases/customers to business ownership; atomic stock/sales; idempotency.",
+      "state": "open"
+    },
+    {
+      "title": "M3 — Staff and accountability",
+      "description": "High. RBAC, staff dashboard, configurable permissions, audit logs.",
+      "state": "open"
+    },
+    {
+      "title": "M4 — Business reporting",
+      "description": "Medium. Date-range, sales/payment, COGS/gross profit, product performance/valuation, CSV exports.",
+      "state": "open"
+    },
+    {
+      "title": "M5 — Release and reliability",
+      "description": "High. Release placeholders, bundle optimization, Android/PWA, offline behavior, backup/restore, security/deployment audit.",
+      "state": "open"
+    }
+  ],
+  "labels": [
+    {
+      "name": "priority:critical",
+      "color": "b60205",
+      "description": "Critical priority"
+    },
+    {
+      "name": "priority:high",
+      "color": "d93f0b",
+      "description": "High priority"
+    },
+    {
+      "name": "priority:medium",
+      "color": "fbca04",
+      "description": "Medium priority"
+    },
+    {
+      "name": "area:backend",
+      "color": "1d76db",
+      "description": "Backend work"
+    },
+    {
+      "name": "area:frontend",
+      "color": "0e8a16",
+      "description": "Frontend work"
+    },
+    {
+      "name": "area:database",
+      "color": "5319e7",
+      "description": "Database/schema/migrations"
+    },
+    {
+      "name": "area:security",
+      "color": "e99695",
+      "description": "Security and access control"
+    },
+    {
+      "name": "area:testing",
+      "color": "bfd4f2",
+      "description": "Testing and QA"
+    },
+    {
+      "name": "type:feature",
+      "color": "a2eeef",
+      "description": "New feature"
+    },
+    {
+      "name": "type:bug",
+      "color": "d73a4a",
+      "description": "Bug fix"
+    },
+    {
+      "name": "type:refactor",
+      "color": "cfd3d7",
+      "description": "Refactoring"
+    },
+    {
+      "name": "type:migration",
+      "color": "f9d0c4",
+      "description": "Data/schema migration"
+    },
+    {
+      "name": "type:performance",
+      "color": "fef2c0",
+      "description": "Performance improvement"
+    }
+  ],
+  "issues": [
+    {
+      "key": "1.1",
+      "title": "Issue 1.1 — Set up Supabase project and environment configuration",
+      "milestone": "M1 — Multi-business foundation",
+      "labels": [
+        "priority:critical",
+        "area:backend",
+        "area:database",
+        "type:feature"
+      ],
+      "dependencies": [],
+      "body": "## Description\nConfigure Supabase as Stockly's central backend and PostgreSQL database.\n\n## Tasks\n- Create Supabase project.\n- Configure development and production environments.\n- Install Supabase JavaScript client.\n- Add environment variables.\n- Configure database migrations.\n- Configure authentication settings.\n- Ensure secrets are never exposed in frontend code.\n\n## Acceptance criteria\n- Application connects successfully to Supabase.\n- Development and production configurations are separate.\n- No service-role key is exposed to the browser.\n- Database migrations can be applied reproducibly.\n- Existing local application still builds.\n\n## Dependencies\nNone."
+    },
+    {
+      "key": "1.2",
+      "title": "Issue 1.2 — Design multi-tenant database schema",
+      "milestone": "M1 — Multi-business foundation",
+      "labels": [
+        "priority:critical",
+        "area:database",
+        "type:feature"
+      ],
+      "dependencies": [
+        "1.1"
+      ],
+      "body": "## Description\nDesign the database around multiple independent businesses sharing one PostgreSQL database.\n\n## Required tables\n| Table | Purpose |\n| --- | --- |\n| profiles | User profile information |\n| businesses | Business records |\n| business_members | Owner and worker memberships |\n| invitations | Worker invitation records |\n| products | Business products |\n| categories | Product categories |\n| customers | Business customers |\n| suppliers | Business suppliers |\n| sales | Sales transactions |\n| sale_items | Individual sale items |\n| purchases | Purchase transactions |\n| purchase_items | Individual purchase items |\n| stock_movements | Inventory movement history |\n| audit_logs | Important activity history |\n\n## Tasks\n- Define primary and foreign keys.\n- Add `business_id` to business-owned records.\n- Define membership relationships.\n- Add appropriate unique constraints.\n- Define indexes for common queries.\n- Define deletion and archival rules.\n- Document the schema in `SUPABASE-ARCHITECTURE.md`.\n\n## Acceptance criteria\n- Every business-owned record is associated with a business.\n- Foreign keys enforce valid relationships.\n- Business membership cannot be duplicated.\n- Indexes support common business-scoped queries.\n- Database migrations are version-controlled.\n- Schema supports two or more independent businesses.\n\n## Dependencies\n- Issue 1.1"
+    },
+    {
+      "key": "1.3",
+      "title": "Issue 1.3 — Implement owner registration and authentication",
+      "milestone": "M1 — Multi-business foundation",
+      "labels": [
+        "priority:critical",
+        "area:backend",
+        "area:frontend",
+        "type:feature"
+      ],
+      "dependencies": [
+        "1.1",
+        "1.2"
+      ],
+      "body": "## Description\nImplement secure owner registration, login and logout using Supabase Auth.\n\n## Tasks\n- Owner registration.\n- Email verification.\n- Login and logout.\n- Password reset.\n- Session persistence.\n- Protected application routes.\n- Authentication error handling.\n\n## Acceptance criteria\n- Owners can register independently.\n- Users can log in on different devices.\n- Sessions survive page refreshes.\n- Protected pages reject unauthenticated users.\n- Password reset works.\n- Users cannot impersonate another account.\n\n## Dependencies\n- Issue 1.1\n- Issue 1.2"
+    },
+    {
+      "key": "1.4",
+      "title": "Issue 1.4 — Implement business creation and business profiles",
+      "milestone": "M1 — Multi-business foundation",
+      "labels": [
+        "priority:critical",
+        "area:backend",
+        "area:frontend",
+        "type:feature"
+      ],
+      "dependencies": [
+        "1.3"
+      ],
+      "body": "## Description\nAllow authenticated owners to create and manage their businesses.\n\n## Tasks\n- Business creation form.\n- Business name and contact information.\n- Business profile management.\n- Assign creator as business owner.\n- Business selection after login.\n- Business membership validation.\n\n## Acceptance criteria\n- An authenticated owner can create a business.\n- Business creation automatically establishes owner membership.\n- A business cannot be accessed by an unrelated account.\n- Business information persists in PostgreSQL.\n- Business selection reflects the user's actual memberships.\n\n## Dependencies\n- Issue 1.3"
+    },
+    {
+      "key": "1.5",
+      "title": "Issue 1.5 — Implement worker invitations and account onboarding",
+      "milestone": "M1 — Multi-business foundation",
+      "labels": [
+        "priority:critical",
+        "area:backend",
+        "area:frontend",
+        "type:feature"
+      ],
+      "dependencies": [
+        "1.3",
+        "1.4"
+      ],
+      "body": "## Description\nAllow business owners to invite workers into their businesses.\n\n## Tasks\n- Invitation creation.\n- Invitation delivery by email.\n- Secure invitation tokens.\n- Invitation expiry.\n- Invitation acceptance.\n- Worker account creation.\n- Membership activation.\n- Invitation revocation.\n\n## Acceptance criteria\n- Owners can invite workers.\n- Invitations are linked to the correct business.\n- Expired invitations cannot be accepted.\n- An invitation cannot be reused.\n- Workers cannot join businesses without valid authorization.\n- Workers see only businesses they belong to.\n\n## Dependencies\n- Issue 1.3\n- Issue 1.4"
+    },
+    {
+      "key": "1.6",
+      "title": "Issue 1.6 — Implement database-level Row Level Security",
+      "milestone": "M1 — Multi-business foundation",
+      "labels": [
+        "priority:critical",
+        "area:database",
+        "area:security",
+        "type:feature"
+      ],
+      "dependencies": [
+        "1.2",
+        "1.3",
+        "1.4",
+        "1.5"
+      ],
+      "body": "## Description\nImplement PostgreSQL RLS to enforce business-level data isolation.\n\n**Security critical.** Hiding another business's records in React is not security. The database must reject unauthorized access even when someone manually modifies API requests.\n\n## Tasks\n- Enable RLS on all business-owned tables.\n- Create membership-based access policies.\n- Restrict unauthorized reads.\n- Restrict unauthorized inserts.\n- Restrict unauthorized updates.\n- Restrict unauthorized deletes.\n- Prevent users from changing their own roles.\n- Test access using independent authenticated accounts.\n\n## Acceptance criteria\n- Business A cannot read Business B records.\n- Business A cannot modify Business B records.\n- Business A cannot delete Business B records.\n- Unauthorized inserts are rejected.\n- Changing a frontend `business_id` cannot bypass security.\n- Policies work through the actual authenticated Supabase client.\n- Service-role credentials never reach the frontend.\n\n## Dependencies\n- Issues 1.2–1.5"
+    },
+    {
+      "key": "1.7",
+      "title": "Issue 1.7 — Build multi-business isolation integration tests",
+      "milestone": "M1 — Multi-business foundation",
+      "labels": [
+        "priority:critical",
+        "area:testing",
+        "area:security",
+        "type:feature"
+      ],
+      "dependencies": [
+        "1.1",
+        "1.2",
+        "1.3",
+        "1.4",
+        "1.5",
+        "1.6"
+      ],
+      "body": "## Description\nCreate automated tests proving that separate businesses cannot access each other's information.\n\n## Test scenario\n- Owner A creates Business A.\n- Owner B creates Business B.\n- Worker A joins Business A.\n- Worker B joins Business B.\n- Both businesses create products, customers and transactions.\n\n## Acceptance criteria\n- Owner A sees only Business A records.\n- Owner B sees only Business B records.\n- Worker A cannot access Business B.\n- Worker B cannot access Business A.\n- Direct API requests cannot bypass RLS.\n- Tests cover SELECT, INSERT, UPDATE and DELETE.\n- Tests run automatically in CI.\n\n## Dependencies\n- Issues 1.1–1.6"
+    },
+    {
+      "key": "2.1",
+      "title": "Issue 2.1 — Migrate existing inventory records to business ownership",
+      "milestone": "M2 — Transaction integrity",
+      "labels": [
+        "priority:critical",
+        "area:database",
+        "type:migration"
+      ],
+      "dependencies": [
+        "M1"
+      ],
+      "body": "## Description\nModify the existing inventory engine to associate all inventory data with the correct business. Design a reversible migration and backup strategy before migrating existing records.\n\n## Tasks\n- Add business ownership to products.\n- Add business ownership to categories.\n- Add business ownership to stock movements.\n- Migrate existing records.\n- Prevent cross-business product references.\n- Preserve existing inventory quantities.\n\n## Acceptance criteria\n- Every product belongs to one business.\n- Every stock movement belongs to one business.\n- Existing data is preserved.\n- No orphaned inventory records remain.\n- Existing inventory tests continue passing.\n\n## Dependencies\n- M1 complete"
+    },
+    {
+      "key": "2.2",
+      "title": "Issue 2.2 — Make sales business-specific",
+      "milestone": "M2 — Transaction integrity",
+      "labels": [
+        "priority:critical",
+        "area:backend",
+        "type:feature"
+      ],
+      "dependencies": [
+        "2.1"
+      ],
+      "body": "## Tasks\n- Associate sales with businesses.\n- Associate sale items with their parent sales.\n- Validate product ownership during checkout.\n- Attribute sales to authenticated staff.\n- Scope sales queries by business.\n\n## Acceptance criteria\n- Sales cannot contain products from another business.\n- Every sale has a valid business.\n- Staff attribution comes from the authenticated session.\n- Sales are isolated between businesses.\n\n## Dependencies\n- Issue 2.1"
+    },
+    {
+      "key": "2.3",
+      "title": "Issue 2.3 — Implement atomic stock and sales transactions",
+      "milestone": "M2 — Transaction integrity",
+      "labels": [
+        "priority:critical",
+        "area:backend",
+        "area:database",
+        "type:feature"
+      ],
+      "dependencies": [
+        "2.2"
+      ],
+      "body": "## Tasks\n- Move critical stock operations into PostgreSQL transactions.\n- Prevent negative stock where prohibited.\n- Ensure sale creation and stock deduction succeed or fail together.\n- Handle concurrent sales.\n- Maintain stock movement history.\n\n## Acceptance criteria\n- Failed sales do not deduct stock.\n- Successful sales deduct stock exactly once.\n- Concurrent sales cannot oversell available stock.\n- Stock movements reconcile with inventory balances.\n- Database transaction failures roll back correctly.\n\n## Dependencies\n- Issue 2.2"
+    },
+    {
+      "key": "2.4",
+      "title": "Issue 2.4 — Implement duplicate transaction protection",
+      "milestone": "M2 — Transaction integrity",
+      "labels": [
+        "priority:critical",
+        "area:backend",
+        "area:security",
+        "type:feature"
+      ],
+      "dependencies": [
+        "2.3"
+      ],
+      "body": "## Tasks\n- Introduce idempotency keys.\n- Enforce unique transaction identifiers.\n- Handle network retries.\n- Prevent duplicate checkout submissions.\n\n## Acceptance criteria\n- Repeated requests with the same idempotency key create one sale.\n- Retried requests return the original transaction result.\n- Duplicate requests do not deduct stock twice.\n\n## Dependencies\n- Issue 2.3"
+    },
+    {
+      "key": "2.5",
+      "title": "Issue 2.5 — Make purchases and suppliers business-specific",
+      "milestone": "M2 — Transaction integrity",
+      "labels": [
+        "priority:critical",
+        "area:backend",
+        "type:feature"
+      ],
+      "dependencies": [
+        "2.4"
+      ],
+      "body": "## Acceptance criteria\n- Purchases belong to the correct business.\n- Suppliers are business-specific.\n- Purchase items reference valid business products.\n- Receiving stock updates inventory correctly.\n- Another business cannot access purchase records.\n\n## Dependencies\n- Issue 2.4"
+    },
+    {
+      "key": "2.6",
+      "title": "Issue 2.6 — Make customer records business-specific",
+      "milestone": "M2 — Transaction integrity",
+      "labels": [
+        "priority:critical",
+        "area:backend",
+        "type:feature"
+      ],
+      "dependencies": [
+        "2.5"
+      ],
+      "body": "## Acceptance criteria\n- Customers belong to a business.\n- Customer history is business-specific.\n- Customer records cannot leak between businesses.\n- Sales reference customers from the same business.\n\n## Dependencies\n- Issue 2.5"
+    },
+    {
+      "key": "3.1",
+      "title": "Issue 3.1 — Implement role-based access control",
+      "milestone": "M3 — Staff and accountability",
+      "labels": [
+        "priority:high",
+        "area:security",
+        "area:backend",
+        "type:feature"
+      ],
+      "dependencies": [
+        "M2"
+      ],
+      "body": "## Description\nCreate three default roles with permissions enforced by backend/database operations.\n\n| Permission | Owner | Manager | Worker |\n| --- | --- | --- | --- |\n| View dashboard | ✓ | ✓ | Limited |\n| Record sales | ✓ | ✓ | ✓ |\n| Manage products | ✓ | ✓ | Limited |\n| Manage purchases | ✓ | ✓ | — |\n| View reports | ✓ | ✓ | — |\n| Manage workers | ✓ | — | — |\n| Business settings | ✓ | — | — |\n\n## Acceptance criteria\n- Roles are assigned per business membership.\n- Permissions are enforced by backend/database operations.\n- Workers cannot promote themselves.\n- Owners cannot accidentally lose ownership.\n- Unauthorized actions are rejected.\n- Permission changes take effect without relying on frontend hiding.\n\n## Dependencies\n- M2 complete"
+    },
+    {
+      "key": "3.2",
+      "title": "Issue 3.2 — Build staff management dashboard",
+      "milestone": "M3 — Staff and accountability",
+      "labels": [
+        "priority:high",
+        "area:frontend",
+        "type:feature"
+      ],
+      "dependencies": [
+        "3.1"
+      ],
+      "body": "## Acceptance criteria\n- Owners can view staff members.\n- Owners can invite workers.\n- Owners can deactivate memberships.\n- Owners can change permitted roles.\n- Staff status is visible.\n- Staff data is scoped to the current business.\n\n## Dependencies\n- Issue 3.1"
+    },
+    {
+      "key": "3.3",
+      "title": "Issue 3.3 — Implement configurable permissions",
+      "milestone": "M3 — Staff and accountability",
+      "labels": [
+        "priority:high",
+        "area:backend",
+        "type:feature"
+      ],
+      "dependencies": [
+        "3.2"
+      ],
+      "body": "## Acceptance criteria\n- Default roles are configurable.\n- Permissions can be granted or revoked.\n- Permission changes are persisted.\n- Critical owner-only permissions remain protected.\n- Permission changes are audited.\n\n## Dependencies\n- Issue 3.2"
+    },
+    {
+      "key": "3.4",
+      "title": "Issue 3.4 — Build audit logs",
+      "milestone": "M3 — Staff and accountability",
+      "labels": [
+        "priority:high",
+        "area:backend",
+        "area:frontend",
+        "type:feature"
+      ],
+      "dependencies": [
+        "3.3"
+      ],
+      "body": "## Description\nRecord: product creation/modification, stock adjustments, sales creation/cancellation, purchase creation/receiving, staff invitations, role changes, business setting changes.\n\n## Acceptance criteria\n- Each event records the authenticated actor.\n- Each event records the business.\n- Events include timestamps.\n- Audit records cannot be modified by ordinary workers.\n- Owners can filter activity by staff member, action and date.\n- Sensitive credentials and secrets are never logged.\n\n## Dependencies\n- Issue 3.3"
+    },
+    {
+      "key": "4.1",
+      "title": "Issue 4.1 — Implement custom date-range reporting",
+      "milestone": "M4 — Business reporting",
+      "labels": [
+        "priority:medium",
+        "area:backend",
+        "area:frontend",
+        "type:feature"
+      ],
+      "dependencies": [
+        "M2"
+      ],
+      "body": "## Acceptance criteria\n- Users can select start and end dates.\n- Daily, weekly and monthly reports work.\n- Reports use the current business timezone.\n- Reports exclude other businesses' transactions.\n- Empty date ranges display correctly.\n\n## Dependencies\n- M2 complete (can proceed after transaction data is business-scoped)"
+    },
+    {
+      "key": "4.2",
+      "title": "Issue 4.2 — Implement sales and payment reports",
+      "milestone": "M4 — Business reporting",
+      "labels": [
+        "priority:medium",
+        "area:backend",
+        "type:feature"
+      ],
+      "dependencies": [
+        "4.1"
+      ],
+      "body": "## Acceptance criteria\n- Total sales are calculated correctly.\n- Cash sales are reported separately.\n- M-Pesa sales are reported separately.\n- Cancelled sales are handled correctly.\n- Payment totals reconcile with underlying transactions.\n\n## Dependencies\n- Issue 4.1"
+    },
+    {
+      "key": "4.3",
+      "title": "Issue 4.3 — Implement cost of goods sold and gross profit",
+      "milestone": "M4 — Business reporting",
+      "labels": [
+        "priority:medium",
+        "area:backend",
+        "type:feature"
+      ],
+      "dependencies": [
+        "4.2"
+      ],
+      "body": "## Acceptance criteria\n- Cost of goods sold is calculated from appropriate inventory costs.\n- Gross profit = net sales revenue minus cost of goods sold.\n- Discounts and returns are handled correctly.\n- Historical product costs are preserved.\n- Reports do not incorrectly label gross profit as net profit.\n\n## Dependencies\n- Issue 4.2"
+    },
+    {
+      "key": "4.4",
+      "title": "Issue 4.4 — Implement product performance and stock valuation",
+      "milestone": "M4 — Business reporting",
+      "labels": [
+        "priority:medium",
+        "area:backend",
+        "type:feature"
+      ],
+      "dependencies": [
+        "4.3"
+      ],
+      "body": "## Acceptance criteria\n- Best-selling products can be identified.\n- Slow-moving products can be identified.\n- Stock valuation uses a documented costing method.\n- Inventory reports are business-specific.\n- Reports reconcile with inventory records.\n\n## Dependencies\n- Issue 4.3"
+    },
+    {
+      "key": "4.5",
+      "title": "Issue 4.5 — Implement CSV report exports",
+      "milestone": "M4 — Business reporting",
+      "labels": [
+        "priority:medium",
+        "area:frontend",
+        "type:feature"
+      ],
+      "dependencies": [
+        "4.4"
+      ],
+      "body": "## Acceptance criteria\n- Users can export sales reports.\n- Users can export inventory reports.\n- Users can export purchase reports.\n- Exported data respects business permissions.\n- CSV columns have consistent names and formats.\n\n## Dependencies\n- Issue 4.4"
+    },
+    {
+      "key": "5.1",
+      "title": "Issue 5.1 — Resolve release-checker placeholders",
+      "milestone": "M5 — Release and reliability",
+      "labels": [
+        "priority:high",
+        "type:bug",
+        "area:testing"
+      ],
+      "dependencies": [],
+      "body": "## Acceptance criteria\n- All three existing release-checker placeholders are resolved.\n- Release checks run successfully.\n- No known critical release warnings remain.\n- Results are documented.\n\n## Dependencies\nNone (can start in parallel where safe)."
+    },
+    {
+      "key": "5.2",
+      "title": "Issue 5.2 — Optimize JavaScript bundle",
+      "milestone": "M5 — Release and reliability",
+      "labels": [
+        "priority:high",
+        "area:frontend",
+        "type:performance"
+      ],
+      "dependencies": [],
+      "body": "## Description\nReduce the existing 835 KB main JavaScript chunk. Do not set an arbitrary target without first examining bundle composition.\n\n## Tasks\n- Analyze bundle composition.\n- Identify unnecessarily large dependencies.\n- Implement route-level code splitting.\n- Lazy-load non-critical screens.\n- Remove unused dependencies.\n- Optimize chart and reporting imports.\n\n## Acceptance criteria\n- Main JavaScript chunk is reduced.\n- Initial page loading improves.\n- Lazy-loaded pages work correctly.\n- No existing features break.\n- Bundle sizes are monitored in CI.\n\n## Dependencies\nNone (can run in parallel)."
+    },
+    {
+      "key": "5.3",
+      "title": "Issue 5.3 — Test Android and PWA functionality",
+      "milestone": "M5 — Release and reliability",
+      "labels": [
+        "priority:high",
+        "area:testing",
+        "area:frontend"
+      ],
+      "dependencies": [],
+      "body": "## Acceptance criteria\n- Application works on Android Chrome.\n- PWA installation works.\n- Navigation works on small screens.\n- Forms are usable on mobile.\n- No critical layout overflow exists.\n- Session restoration works after reopening the application.\n\n## Dependencies\nNone (can run in parallel)."
+    },
+    {
+      "key": "5.4",
+      "title": "Issue 5.4 — Implement reliable offline behavior",
+      "milestone": "M5 — Release and reliability",
+      "labels": [
+        "priority:high",
+        "area:frontend",
+        "area:backend",
+        "type:feature"
+      ],
+      "dependencies": [],
+      "body": "## Acceptance criteria\n- Application handles network disconnections.\n- Cached data is clearly identified.\n- Unsynchronized operations are tracked.\n- Reconnection does not duplicate transactions.\n- Conflicting changes are handled safely.\n- Users are informed when operations cannot be completed.\n\n**Important:** Do not allow offline transactions to appear confirmed when they have not reached the authoritative server.\n\n## Dependencies\nNone listed (coordinate with transaction/idempotency work in M2 where relevant)."
+    },
+    {
+      "key": "5.5",
+      "title": "Issue 5.5 — Implement backup and restoration procedures",
+      "milestone": "M5 — Release and reliability",
+      "labels": [
+        "priority:high",
+        "area:database",
+        "area:testing",
+        "type:feature"
+      ],
+      "dependencies": [
+        "M1"
+      ],
+      "body": "## Acceptance criteria\n- Database backup configuration is documented.\n- Backup retention is defined.\n- Restoration procedure is documented.\n- Restoration is tested.\n- Restored data maintains business relationships.\n- Recovery procedures are documented.\n\n## Dependencies\n- M1 schema/foundation (backup strategy should align with multi-tenant schema)."
+    },
+    {
+      "key": "5.6",
+      "title": "Issue 5.6 — Complete production security and deployment audit",
+      "milestone": "M5 — Release and reliability",
+      "labels": [
+        "priority:high",
+        "area:security",
+        "area:backend",
+        "type:testing"
+      ],
+      "dependencies": [
+        "M1",
+        "M2",
+        "M3"
+      ],
+      "body": "## Acceptance criteria\n- HTTPS is enforced.\n- Production secrets are protected.\n- Authentication configuration is verified.\n- RLS policies are tested.\n- Database migrations are reproducible.\n- Error responses do not expose sensitive information.\n- Rate limiting protects sensitive endpoints.\n- Dependencies are checked for known vulnerabilities.\n- Production deployment passes smoke tests.\n\n## Dependencies\n- M1–M3 substantially complete (audit validates real controls)."
+    }
+  ]
+}
