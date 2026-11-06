@@ -2,13 +2,7 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import type { trend } from "../../lib/analytics";
 import { kes } from "../../lib/format";
 import { Card } from "../ui";
-
-export type Period = 7 | 30;
-export const Toggle = ({ days, set }: { days: Period; set: (d: Period) => void }) => (
-  <div className="inline-flex rounded-xl border border-line bg-bg p-1" role="group" aria-label="Period">
-    {([7, 30] as const).map((d) => <button key={d} aria-pressed={days === d} onClick={() => set(d)} className={`min-h-11 rounded-lg px-3 text-sm font-semibold ${days === d ? "bg-soft text-pdark" : "text-muted"}`}>{d} days</button>)}
-  </div>
-);
+import { Toggle, type Period } from "./ChartControls";
 const Stat = ({ k, v }: { k: string; v: string }) => <div className="rounded-xl bg-bg p-3"><p className="text-xs text-muted">{k}</p><p className="whitespace-nowrap text-base font-bold sm:text-lg">{v}</p></div>;
 
 export default function Trends({ days, setDays, data, losses }: { days: Period; setDays: (d: Period) => void; data: ReturnType<typeof trend>; losses: { units: number; value: number } }) {

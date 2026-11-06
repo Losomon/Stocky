@@ -1,6 +1,6 @@
 import Dexie, { type Table } from "dexie";
 import { useCallback, useEffect, useState } from "react";
-import { BUSINESS_ID } from "../config";
+import { BUSINESS_ID, onBusinessIdChange } from "../config";
 import {
   buildArchive, buildCancel, buildCategoryCreate, buildPurchaseCancel, buildPurchaseCreate, buildPurchaseOrder, buildPurchaseUpdate, buildReceive, buildSupplierArchive, buildSupplierCreate, buildSupplierDelete, buildSupplierUpdate, nextPurchaseRef, buildCategoryDelete, buildCategoryRename, buildCount, buildProductCreate, buildProductDelete, buildProductUpdate, buildSale, nextReceiptNo,
   type AuditEntry, type BusinessProfile, type Category, type Customer, type StaffMember, type Fail, type Line, type Movement, type Payment, type Product, type ProductInput, type Purchase, type PurchaseInput, type PurchaseItem, type Receipt, type ReceiptItem, type Sale, type SaleItem, type StockCount, type Supplier, type SupplierInput, type Writes,
@@ -28,8 +28,8 @@ class StockDB extends Dexie {
   saleItems!: Table<SaleItem, string>; counts!: Table<StockCount, string>; audit!: Table<AuditEntry, string>;
   suppliers!: Table<Supplier, string>; purchases!: Table<Purchase, string>; purchaseItems!: Table<PurchaseItem, string>; receipts!: Table<Receipt, string>; receiptItems!: Table<ReceiptItem, string>;
   customers!: Table<Customer, string>; staff!: Table<StaffMember, string>; settings!: Table<{ key: string; value: unknown }, string>;
-  constructor() {
-    super("stockly");
+  constructor(name = "stockly") {
+    super(name);
     this.version(1).stores({ products: "id", movements: "++id,productId,ts" });
     this.version(2).stores({ products: "id", movements: "++id,productId,ts,refId", sales: "id,ts,receiptNo", saleItems: "++id,saleId,productId", counts: "id,ts,productId", audit: "++id,ts,entity" })
       .upgrade((tx) => Promise.all([tx.table("products").clear(), tx.table("movements").clear()]));
@@ -59,7 +59,16 @@ class StockDB extends Dexie {
     });
   }
 }
-const db = new StockDB();
+const databaseName = (businessId: string) => businessId === "demo-business" ? "stockly" : `stockly-${businessId}`;
+let db = new StockDB(databaseName(BUSINESS_ID));
+onBusinessIdChange((businessId) => {
+  const nextName = databaseName(businessId);
+  if (db.name === nextName) return;
+  db.close();
+  db = new StockDB(nextName);
+  mode = "device";
+  mem = null;
+});
 type MemState = SeedData & { onboarded: boolean; demo: boolean; lastBackupAt: number | null };
 let mem: MemState | null = null; // fallback when IndexedDB is blocked
 const emptyMem = (): MemState => ({ categories: [], products: [], movements: [], sales: [], saleItems: [], counts: [], audit: [], suppliers: [], purchases: [], purchaseItems: [], receipts: [], receiptItems: [], customers: [], staff: [], business: DEFAULT_BUSINESS, deviceStaffId: "", onboarded: false, demo: false, lastBackupAt: null });
@@ -283,6 +292,10 @@ export function useStock(): StockCtx {
   const [state, setState] = useState<Snapshot | null>(null);
   const refresh = useCallback(async () => setState(await load()), []);
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => onBusinessIdChange(() => {
+    setState(null);
+    void refresh();
+  }), [refresh]);
   const done = async <T,>(r: Result<T>) => { if (r.ok) await refresh(); return r; };
   const ctxOf = (s: Snapshot) => ({ businessId: BUSINESS_ID, staff: deviceStaffName(s) });
   const find = <T extends { id: string }>(arr: T[], id: string) => arr.find((x) => x.id === id);
@@ -331,4 +344,8 @@ export function useStock(): StockCtx {
 }
 
 /** Exposed for tests only. */
-export const _internals = { db, load, transact, uid, loadDemoData, eraseEverything, exportBackupFile, restoreBackupFile, stampBackup, _internals_closeAndReopen: async () => { db.close(); await db.open(); } };
+export const _internals = {
+  get db() { return db; },
+  load, transact, uid, loadDemoData, eraseEverything, exportBackupFile, restoreBackupFile, stampBackup,
+  _internals_closeAndReopen: async () => { db.close(); await db.open(); },
+};

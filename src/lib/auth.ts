@@ -25,11 +25,11 @@ export const currentUser = async (): Promise<AuthUser | null> => {
   return toAuthUser(data.user ?? null);
 };
 
-export const signUp = async (email: string, password: string): Promise<{ ok: true; user: AuthUser } | { ok: false; error: string }> => {
+export const signUp = async (email: string, password: string): Promise<{ ok: true; user: AuthUser | null; confirmationRequired: boolean } | { ok: false; error: string }> => {
   if (!supabase) return { ok: false, error: "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY." };
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) return { ok: false, error: error.message };
-  return { ok: true, user: toAuthUser(data.user) ?? { id: "", email: null } };
+  return { ok: true, user: data.session ? toAuthUser(data.user) : null, confirmationRequired: !data.session };
 };
 
 export const signIn = async (email: string, password: string): Promise<{ ok: true; user: AuthUser } | { ok: false; error: string }> => {

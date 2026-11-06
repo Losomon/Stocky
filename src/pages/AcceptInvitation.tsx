@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { APP_NAME } from "../config";
 import { useAuth } from "../context/AuthContext";
@@ -18,15 +18,22 @@ export default function AcceptInvitation() {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const claiming = useRef(false);
 
   const claim = async () => {
-    if (claimed) return;
+    if (claimed || claiming.current) return;
+    claiming.current = true;
+    setErrors([]);
     setBusy(true);
-    const r = await claimInvitation(token);
-    setBusy(false);
-    if (!r.ok) { setErrors([r.error]); return; }
-    setBusinessId(r.businessId);
-    setClaimed(true);
+    try {
+      const r = await claimInvitation(token);
+      if (!r.ok) { setErrors([r.error]); return; }
+      setBusinessId(r.businessId);
+      setClaimed(true);
+    } finally {
+      claiming.current = false;
+      setBusy(false);
+    }
   };
 
   const signInAndClaim = async () => {
@@ -39,9 +46,14 @@ export default function AcceptInvitation() {
 
   const openApp = () => {
     if (!businessId) return;
-    auth.setActiveBusiness(businessId);
-    nav("/", { replace: true });
+    void auth.setActiveBusiness(businessId).then(() => nav("/", { replace: true }))
+      .catch((e: unknown) => setErrors([e instanceof Error ? e.message : "Could not open this business."]));
   };
+
+  useEffect(() => {
+    if (!token || claimed || !auth.user) return;
+    void claim();
+  }, [claimed, token, auth.user]);
 
   if (!token) {
     return (
@@ -63,21 +75,19 @@ export default function AcceptInvitation() {
           <label className="block"><span className="mb-1 block text-sm font-medium">Password</span><input className={fieldCls} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></label>
           <button disabled={busy} onClick={signInAndClaim} className={`${btnPrimary} w-full`}>{busy ? "Signing in…" : "Sign in and join"}</button>
         </Card>
-        <p className="text-center text-sm text-muted">Don't have an account? <a onClick={(e) => { e.preventDefault(); nav("/sign-up"); }} className="font-semibold text-pdark underline">Create one</a>, then open this link again.</p>
+        <p className="text-center text-sm text-muted">Don't have an account? <a onClick={(e) => { e.preventDefault(); nav(`/sign-up?invite=${encodeURIComponent(token)}`); }} className="font-semibold text-pdark underline">Create one</a>, then return here to join.</p>
       </main>
     );
   }
 
-  useEffect(() => {
-    if (!token || claimed || !auth.user) return;
-    void claim();
-  }, [claimed, token, auth.user]);
-
-  if (claimed && !businessId) {
+  if (!claimed || !businessId) {
     return (
       <main className="mx-auto min-h-screen max-w-lg space-y-4 px-4 py-8 pt-[max(2rem,env(safe-area-inset-top))]">
         <p className="text-xl font-extrabold"><span className="text-primary">✦</span> {APP_NAME}</p>
-        <Card className="space-y-3">{busy ? <p className="text-sm text-muted">Joining…</p> : <p className="text-sm text-muted">Joining the business…</p>}</Card>
+        <Card className="space-y-3">
+          <Errors list={errors} />
+          {busy ? <p className="text-sm text-muted">Joining…</p> : <button onClick={() => void claim()} className={`${btnPrimary} w-full`}>Join the business</button>}
+        </Card>
       </main>
     );
   }
