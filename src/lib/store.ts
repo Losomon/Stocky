@@ -75,7 +75,7 @@ const emptyMem = (): MemState => ({ categories: [], products: [], movements: [],
 
 let mode: "device" | "memory" = "device";
 
-export interface Snapshot { P: Product[]; CAT: Category[]; M: Movement[]; S: Sale[]; SI: SaleItem[]; C: StockCount[]; SUP: Supplier[]; PU: Purchase[]; PI: PurchaseItem[]; RC: Receipt[]; RI: ReceiptItem[]; CUS: Customer[]; STAFF: StaffMember[]; business: BusinessProfile; deviceStaffId: string | null; setup: boolean; demo: boolean; lastBackupAt: number | null; mode: "device" | "memory" }
+export interface Snapshot { P: Product[]; CAT: Category[]; M: Movement[]; S: Sale[]; SI: SaleItem[]; C: StockCount[]; audit: AuditEntry[]; SUP: Supplier[]; PU: Purchase[]; PI: PurchaseItem[]; RC: Receipt[]; RI: ReceiptItem[]; CUS: Customer[]; STAFF: StaffMember[]; business: BusinessProfile; deviceStaffId: string | null; setup: boolean; demo: boolean; lastBackupAt: number | null; mode: "device" | "memory" }
 export type Result<T> = { ok: true; value: T } | Fail;
 export interface StockCtx {
   state: Snapshot | null;
@@ -127,9 +127,9 @@ async function readSettings() {
   return { business: (get("business") as BusinessProfile | undefined) ?? DEFAULT_BUSINESS, deviceStaffId: (get("deviceStaffId") as string | undefined) ?? null, setup: !get("onboarded"), demo: get("demo") === true, lastBackupAt: (get("lastBackupAt") as number | undefined) ?? null };
 }
 async function read(): Promise<Snapshot> {
-  if (mode === "device") return { mode, P: await db.products.toArray(), CAT: await db.categories.toArray(), M: await db.movements.toArray(), S: await db.sales.toArray(), SI: await db.saleItems.toArray(), C: await db.counts.toArray(), SUP: await db.suppliers.toArray(), PU: await db.purchases.toArray(), PI: await db.purchaseItems.toArray(), RC: await db.receipts.toArray(), RI: await db.receiptItems.toArray(), CUS: await db.customers.toArray(), STAFF: await db.staff.toArray(), ...(await readSettings()) };
-  if (!mem) return { mode, P: [], CAT: [], M: [], S: [], SI: [], C: [], SUP: [], PU: [], PI: [], RC: [], RI: [], CUS: [], STAFF: [], business: DEFAULT_BUSINESS, deviceStaffId: null, setup: true, demo: false, lastBackupAt: null };
-  const m = mem; return { mode, setup: !m.onboarded, demo: m.demo, lastBackupAt: m.lastBackupAt, P: [...m.products], CAT: [...m.categories], M: [...m.movements], S: [...m.sales], SI: [...m.saleItems], C: [...m.counts], SUP: [...m.suppliers], PU: [...m.purchases], PI: [...m.purchaseItems], RC: [...m.receipts], RI: [...m.receiptItems], CUS: [...m.customers], STAFF: [...m.staff], business: m.business, deviceStaffId: m.deviceStaffId };
+  if (mode === "device") return { mode, P: await db.products.toArray(), CAT: await db.categories.toArray(), M: await db.movements.toArray(), S: await db.sales.toArray(), SI: await db.saleItems.toArray(), C: await db.counts.toArray(), audit: await db.audit.toArray(), SUP: await db.suppliers.toArray(), PU: await db.purchases.toArray(), PI: await db.purchaseItems.toArray(), RC: await db.receipts.toArray(), RI: await db.receiptItems.toArray(), CUS: await db.customers.toArray(), STAFF: await db.staff.toArray(), ...(await readSettings()) };
+  if (!mem) return { mode, P: [], CAT: [], M: [], S: [], SI: [], C: [], audit: [], SUP: [], PU: [], PI: [], RC: [], RI: [], CUS: [], STAFF: [], business: DEFAULT_BUSINESS, deviceStaffId: null, setup: true, demo: false, lastBackupAt: null };
+  const m = mem; return { mode, setup: !m.onboarded, demo: m.demo, lastBackupAt: m.lastBackupAt, P: [...m.products], CAT: [...m.categories], M: [...m.movements], S: [...m.sales], SI: [...m.saleItems], C: [...m.counts], audit: [...m.audit], SUP: [...m.suppliers], PU: [...m.purchases], PI: [...m.purchaseItems], RC: [...m.receipts], RI: [...m.receiptItems], CUS: [...m.customers], STAFF: [...m.staff], business: m.business, deviceStaffId: m.deviceStaffId };
 }
 async function write(w: Writes) {
   if (mode === "device") {

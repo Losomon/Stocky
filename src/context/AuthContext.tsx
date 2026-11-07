@@ -9,7 +9,7 @@ import {
   signUp,
   type AuthUser,
 } from "../lib/auth";
-import { fetchBusiness, fetchMyBusinesses, type Business } from "../lib/business";
+import { fetchBusiness, fetchMyBusinesses, fetchMyMembership, type Business, type BusinessRole } from "../lib/business";
 import { hasSupabase } from "../lib/supabase";
 import { setBusinessId } from "../config";
 
@@ -18,6 +18,7 @@ interface AuthContextValue {
   businesses: Business[];
   businessId: string | null;
   business: Business | null;
+  role: BusinessRole | null;
   businessError: string | null;
   loading: boolean;
   configured: boolean;
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [businessId, setBusinessIdState] = useState<string | null>(null);
   const [business, setBusiness] = useState<Business | null>(null);
+  const [role, setRole] = useState<BusinessRole | null>(null);
   const [businessError, setBusinessError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -56,7 +58,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setBusiness(result.business);
     setBusinessError(null);
     localStorage.setItem("stockly.active_business_id", id);
+    await loadMyRole(id);
   };
+
+  const loadMyRole = async (id: string) => {
+    if (!authUser()) return;
+    const result = await fetchMyMembership(id);
+    setRole(result.ok ? (result.membership.role as BusinessRole) : null);
+  };
+
+  const authUser = (): AuthUser | null => user;
 
   const loadBusinesses = async (u: AuthUser | null) => {
     setLoading(true);
@@ -65,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setBusinessIdState(null);
       setBusinessId("");
       setBusiness(null);
+      setRole(null);
       setBusinessError(null);
       localStorage.removeItem("stockly.active_business_id");
       setLoading(false);
@@ -76,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setBusinessIdState(null);
       setBusinessId("");
       setBusiness(null);
+      setRole(null);
       setBusinessError(result.error);
       setLoading(false);
       return;
@@ -89,11 +102,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setBusinessIdState(selected.id);
       setBusinessId(selected.id);
       setBusiness(selected);
+      await loadMyRole(selected.id);
       localStorage.setItem("stockly.active_business_id", selected.id);
     } else {
       setBusinessIdState(null);
       setBusinessId("");
       setBusiness(null);
+      setRole(null);
       localStorage.removeItem("stockly.active_business_id");
     }
     setLoading(false);
@@ -153,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     businesses,
     businessId,
     business,
+    role,
     businessError,
     loading,
     configured: hasSupabase,

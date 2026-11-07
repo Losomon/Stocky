@@ -4,25 +4,40 @@ import { Trash2 } from "lucide-react";
 import { purchaseTotal } from "../lib/engine";
 import { kes } from "../lib/format";
 import type { StockCtx } from "../lib/store";
+import { useAuth } from "../context/AuthContext";
+import { permissions, type Permission } from "../lib/permissions";
 import { Card, Empty, Errors, btnGhost, btnPrimary, fieldCls } from "../components/ui";
 
 const num = (s: string) => (s.trim() === "" ? NaN : Number(s));
 interface L { productId: string; qty: string; cost: string }
+const MANAGE: Permission = "manage.purchases";
 
 export default function PurchaseForm({ mode }: { mode: "new" | "edit" }) {
   const { state, createPurchase, updatePurchase, createSupplier } = useOutletContext<StockCtx>();
+  const auth = useAuth();
   const { id } = useParams();
   const [params] = useSearchParams();
   const nav = useNavigate();
+  const canManage = permissions.can(auth.role, MANAGE);
   const existing = mode === "edit" ? state?.PU.find((p) => p.id === id) : undefined;
+  if (!state) return <p className="text-muted">Loading…</p>;
+  if (!canManage) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-4">
+        <h1 className="text-2xl font-bold sm:text-3xl">{mode === "new" ? "New purchase" : `Edit ${existing?.ref ?? "purchase"}`}</h1>
+        <Card className="space-y-2"><p>Your role ({auth.role ?? "none"}) can't create or change purchases. Purchasing is limited to the Owner and Manager.</p>
+          <Link to="/purchases" className={btnGhost}>Back to purchases</Link></Card>
+      </div>
+    );
+  }
+  if (mode === "edit" && (!existing || existing.status !== "draft" || state.RC.some((r) => r.purchaseId === existing.id)))
+    return <Card><Empty title="This purchase can't be edited" hint="Only a draft purchase can be changed." /><Link to={existing ? `/purchases/${existing.id}` : "/purchases"} className={btnGhost}>Back</Link></Card>;
+
   const [supplierId, setSupplierId] = useState(existing?.supplierId ?? params.get("supplier") ?? "");
   const [lines, setLines] = useState<L[]>(() => existing && state ? state.PI.filter((i) => i.purchaseId === existing.id).map((i) => ({ productId: i.productId, qty: String(i.qty), cost: String(i.unitCost) })) : []);
   const [note, setNote] = useState(existing?.note ?? "");
   const [errors, setErrors] = useState<string[]>([]), [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState(false), [ns, setNs] = useState({ name: "", phone: "" });
-  if (!state) return <p className="text-muted">Loading…</p>;
-  if (mode === "edit" && (!existing || existing.status !== "draft" || state.RC.some((r) => r.purchaseId === existing.id)))
-    return <Card><Empty title="This purchase can't be edited" hint="Only a draft purchase can be changed." /><Link to={existing ? `/purchases/${existing.id}` : "/purchases"} className={btnGhost}>Back</Link></Card>;
 
   const name = new Map(state.P.map((p) => [p.id, p.name]));
   const setLine = (pid: string, k: "qty" | "cost", v: string) => setLines((ls) => ls.map((l) => (l.productId === pid ? { ...l, [k]: v } : l)));
@@ -57,7 +72,13 @@ export default function PurchaseForm({ mode }: { mode: "new" | "edit" }) {
             <input className={`${fieldCls} flex-1`} placeholder="Phone (optional)" aria-label="New supplier phone" inputMode="tel" value={ns.phone} onChange={(e) => setNs({ ...ns, phone: e.target.value })} />
             <button onClick={() => void addSupplier()} className={btnPrimary}>Add</button><button onClick={() => setAdding(false)} className={btnGhost}>Cancel</button>
           </div>
-        ) : <button onClick={() => setAdding(true)} className="min-h-11 text-sm font-semibold text-pdark">+ New supplier</button>}
+        ) : (
+          canManage ? (
+            <button onClick={() => setAdding(true)} className="min-h-11 text-sm font-semibold text-pdark">+ New supplier</button>
+          ) : (
+            <span className="min-h-11 inline-flex items-center text-sm font-semibold text-muted">Suppliers: Owner or Manager role required</span>
+          )
+        )}
       </Card>
       <Card>
         <h2 className="mb-2 text-lg font-semibold">Products</h2>

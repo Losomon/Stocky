@@ -4,10 +4,16 @@ import { Plus, Search } from "lucide-react";
 import { DAY, purchaseStatus, purchaseTotal, supplierStats, type PurchaseStatus } from "../lib/engine";
 import { kes, when } from "../lib/format";
 import type { StockCtx } from "../lib/store";
+import { useAuth } from "../context/AuthContext";
+import { permissions, type Permission } from "../lib/permissions";
 import { Badge, Card, Empty, PurchaseBadge, btnPrimary, fieldCls } from "../components/ui";
+
+const MANAGE: Permission = "manage.purchases";
 
 export default function Purchases() {
   const { state } = useOutletContext<StockCtx>();
+  const auth = useAuth();
+  const canManage = permissions.can(auth.role, MANAGE);
   const [tab, setTab] = useState<"purchases" | "suppliers">("purchases");
   const [q, setQ] = useState(""), [status, setStatus] = useState(""), [range, setRange] = useState(""), [archived, setArchived] = useState(false);
   const rows = useMemo(() => {
@@ -31,7 +37,12 @@ export default function Purchases() {
           <div className="inline-flex rounded-xl border border-line bg-surface p-1" role="group" aria-label="Purchases view">
             {(["purchases", "suppliers"] as const).map((t) => <button key={t} aria-pressed={tab === t} onClick={() => setTab(t)} className={`min-h-11 rounded-lg px-4 font-semibold capitalize ${tab === t ? "bg-soft text-pdark" : "text-muted"}`}>{t}</button>)}
           </div>
-          <Link to={tab === "purchases" ? "/purchases/new" : "/purchases/suppliers/new"} className={btnPrimary}><Plus size={20} />{tab === "purchases" ? "New purchase" : "Add supplier"}</Link>
+          {canManage ? (
+            <Link to={tab === "purchases" ? "/purchases/new" : "/purchases/suppliers/new"} className={btnPrimary}><Plus size={20} />{tab === "purchases" ? "New purchase" : "Add supplier"}</Link>
+          ) : (
+            <button className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 font-semibold text-muted" disabled><Plus size={20} />{tab === "purchases" ? "New purchase" : "Add supplier"}</button>
+          )}
+          {!canManage && <span className="text-xs text-muted">View only: purchases require the Owner or Manager role.</span>}
         </div>
       </div>
       <div className="flex flex-wrap gap-2">

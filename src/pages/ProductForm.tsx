@@ -2,18 +2,34 @@ import { useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { UNITS, validateProduct, type ProductInput } from "../lib/engine";
 import type { StockCtx } from "../lib/store";
+import { useAuth } from "../context/AuthContext";
+import { permissions, type Permission } from "../lib/permissions";
 import { Card, Empty, btnGhost, btnPrimary } from "../components/ui";
 
 const num = (s: string) => (s.trim() === "" ? NaN : Number(s));
 const input = "min-h-12 w-full rounded-xl border border-line bg-surface px-3 text-base";
+const MANAGE: Permission = "manage.products";
 const Field = ({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) =>
   <label className="block"><span className="mb-1 block text-sm font-medium">{label}</span>{children}{hint && <span className="mt-1 block text-xs text-muted">{hint}</span>}</label>;
 
 export default function ProductForm({ mode }: { mode: "new" | "edit" }) {
   const { state, createProduct, updateProduct } = useOutletContext<StockCtx>();
+  const auth = useAuth();
   const { id } = useParams();
   const nav = useNavigate();
+  const canManage = permissions.can(auth.role, MANAGE);
   const existing = mode === "edit" ? state?.P.find((p) => p.id === id) : undefined;
+  if (!state) return <p className="text-muted">Loading…</p>;
+  if (!canManage) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4">
+        <h1 className="text-2xl font-bold sm:text-3xl">{mode === "new" ? "Add product" : `Edit ${existing?.name ?? "product"}`}</h1>
+        <Card className="space-y-2"><p>Your role ({auth.role ?? "none"}) can't create or change products. Product management is limited to the Owner and Manager.</p>
+          <Link to="/products" className={btnGhost}>Back to products</Link></Card>
+      </div>
+    );
+  }
+  if (mode === "edit" && !existing) return <Card><Empty title="Product not found" hint="It may have been deleted." /><Link to="/products" className={btnGhost}>Back to products</Link></Card>;
   const [f, setF] = useState(() => ({
     name: existing?.name ?? "", sku: existing?.sku ?? "", categoryId: existing?.categoryId ?? "", unit: existing?.unit ?? "piece",
     cost: existing ? String(existing.cost) : "", price: existing ? String(existing.price) : "", min: existing ? String(existing.min) : "0",
@@ -21,8 +37,6 @@ export default function ProductForm({ mode }: { mode: "new" | "edit" }) {
   }));
   const [errors, setErrors] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  if (!state) return <p className="text-muted">Loading…</p>;
-  if (mode === "edit" && !existing) return <Card><Empty title="Product not found" hint="It may have been deleted." /><Link to="/products" className={btnGhost}>Back to products</Link></Card>;
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF((x) => ({ ...x, [k]: e.target.value }));
 
   const parsed: ProductInput = { name: f.name, sku: f.sku, categoryId: f.categoryId || undefined, unit: f.unit, cost: num(f.cost), price: num(f.price), min: num(f.min), barcode: f.barcode, description: f.description, openingStock: mode === "new" && f.opening.trim() !== "" ? num(f.opening) : undefined };

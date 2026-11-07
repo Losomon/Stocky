@@ -3,8 +3,9 @@
 // REST API, which Row Level Security scopes to the caller's own business.
 import { supabase, hasSupabase } from "./supabase";
 import type { AuthUser } from "./auth";
+import type { BusinessRole } from "./permissions";
 
-export type BusinessRole = "owner" | "admin" | "manager" | "cashier";
+export type { BusinessRole } from "./permissions";
 
 export interface Business {
   id: string;

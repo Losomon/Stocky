@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { AlertTriangle, HardDrive, Layers, LayoutDashboard, MoreHorizontal, Package, Receipt, Search, ShoppingCart, WifiOff, SlidersHorizontal, Users, type LucideIcon } from "lucide-react";
+import { AlertTriangle, HardDrive, Layers, LayoutDashboard, MoreHorizontal, Package, Receipt, Search, ShoppingCart, WifiOff, SlidersHorizontal, Users, BarChart3, BookOpen, type LucideIcon } from "lucide-react";
 import { APP_NAME } from "../config";
 import AvatarMenu from "./AvatarMenu";
 import { daysAgo } from "../lib/format";
@@ -10,6 +10,7 @@ const NAV: { to: string; label: string; icon: LucideIcon }[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard }, { to: "/sales", label: "Sales", icon: ShoppingCart },
   { to: "/products", label: "Products", icon: Package }, { to: "/inventory", label: "Inventory", icon: Layers },
   { to: "/purchases", label: "Purchases", icon: Receipt }, { to: "/customers", label: "Customers", icon: Users },
+  { to: "/reports", label: "Reports", icon: BarChart3 }, { to: "/audit-log", label: "Audit log", icon: BookOpen },
   { to: "/settings", label: "Settings", icon: SlidersHorizontal },
 ];
 const link = ({ isActive }: { isActive: boolean }) =>

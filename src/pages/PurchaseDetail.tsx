@@ -4,11 +4,17 @@ import { Check } from "lucide-react";
 import { purchaseLines, purchaseStatus, purchaseTotal } from "../lib/engine";
 import { kes, when } from "../lib/format";
 import { uid, type StockCtx } from "../lib/store";
+import { useAuth } from "../context/AuthContext";
+import { permissions, type Permission } from "../lib/permissions";
 import { Card, Empty, Errors, PurchaseBadge, btnGhost, btnPrimary, fieldCls } from "../components/ui";
+
+const MANAGE: Permission = "manage.purchases";
 
 export default function PurchaseDetail() {
   const { state, orderPurchase, cancelPurchase, receivePurchase } = useOutletContext<StockCtx>();
+  const auth = useAuth();
   const { id } = useParams();
+  const canManage = permissions.can(auth.role, MANAGE);
   const [errors, setErrors] = useState<string[]>([]), [msg, setMsg] = useState("");
   const [recv, setRecv] = useState(false), [qtys, setQtys] = useState<Record<string, string>>({}), [rid, setRid] = useState(uid), [busy, setBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -56,7 +62,7 @@ export default function PurchaseDetail() {
         <p className="mt-3 flex justify-between text-xl font-bold"><span>Total</span><span>{kes(purchaseTotal(lines.map((l) => ({ qty: l.ordered, unitCost: l.unitCost }))))}</span></p>
       </Card>
 
-      {recv && canReceive && (
+      {recv && canReceive && canManage && (
         <Card className="space-y-3">
           <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-semibold">Record delivery</h2>
             <button onClick={() => setQtys(Object.fromEntries(open.map((l) => [l.productId, String(l.outstanding)])))} className="min-h-11 text-sm font-semibold text-pdark">Fill all outstanding</button></div>
@@ -70,11 +76,14 @@ export default function PurchaseDetail() {
         </Card>)}
 
       <div className="flex flex-wrap items-center gap-2">
-        {canReceive && !recv && <button onClick={() => { setRecv(true); setMsg(""); }} className={btnPrimary}>Receive stock</button>}
-        {status === "draft" && <><Link to={`/purchases/${p.id}/edit`} className={btnGhost}>Edit draft</Link><button onClick={() => void act(orderPurchase(p.id), "Marked as ordered.")} className={btnGhost}>Mark as ordered</button></>}
-        {(status === "draft" || status === "ordered") && (confirmCancel
+        {canReceive && !recv && canManage && <button onClick={() => { setRecv(true); setMsg(""); }} className={btnPrimary}>Receive stock</button>}
+        {canReceive && !recv && !canManage && <span className="text-xs text-muted">Receiving stock requires the Owner or Manager role.</span>}
+        {status === "draft" && canManage && <><Link to={`/purchases/${p.id}/edit`} className={btnGhost}>Edit draft</Link><button onClick={() => void act(orderPurchase(p.id), "Marked as ordered.")} className={btnGhost}>Mark as ordered</button></>}
+        {status === "draft" && !canManage && <span className="text-xs text-muted">Purchase changes require the Owner or Manager role.</span>}
+        {(status === "draft" || status === "ordered") && canManage && (confirmCancel
           ? <><button onClick={() => void act(cancelPurchase(p.id), "Purchase cancelled.").then(() => setConfirmCancel(false))} className={btnPrimary}>Yes, cancel purchase</button><button onClick={() => setConfirmCancel(false)} className={btnGhost}>Keep</button></>
           : <button onClick={() => setConfirmCancel(true)} className={btnGhost}>Cancel purchase</button>)}
+        {(status === "draft" || status === "ordered") && !canManage && <span className="text-xs text-muted">Cancelling a purchase requires the Owner or Manager role.</span>}
         {status === "partial" && <span className="text-sm text-muted">Part of this purchase has been received, so it can't be cancelled.</span>}
       </div>
 
