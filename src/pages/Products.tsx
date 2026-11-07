@@ -76,7 +76,7 @@ export default function Products() {
 
 function Categories({ ctx, cats, usage }: { ctx: StockCtx; cats: Category[]; usage: Map<string, number> }) {
   const auth = useAuth();
-  const canManage = permissions.can(fromBusinessRole(auth.role), MANAGE);
+  const canManage = permissions.can(auth.role, MANAGE);
   const [name, setName] = useState(""), [edit, setEdit] = useState<string | null>(null), [draft, setDraft] = useState(""), [errors, setErrors] = useState<string[]>([]);
   const run = async (r: Promise<{ ok: boolean; errors?: string[] }>, after?: () => void) => { const x = await r; if (!x.ok) setErrors(x.errors ?? []); else { setErrors([]); after?.(); } };
   return (

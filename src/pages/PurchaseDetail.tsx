@@ -14,7 +14,7 @@ export default function PurchaseDetail() {
   const { state, orderPurchase, cancelPurchase, receivePurchase } = useOutletContext<StockCtx>();
   const auth = useAuth();
   const { id } = useParams();
-  const canManage = permissions.can(fromBusinessRole(auth.role), MANAGE);
+  const canManage = permissions.can(auth.role, MANAGE);
   const [errors, setErrors] = useState<string[]>([]), [msg, setMsg] = useState("");
   const [recv, setRecv] = useState(false), [qtys, setQtys] = useState<Record<string, string>>({}), [rid, setRid] = useState(uid), [busy, setBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);

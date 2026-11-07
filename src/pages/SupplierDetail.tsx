@@ -14,7 +14,7 @@ export default function SupplierDetail() {
   const auth = useAuth();
   const { id } = useParams();
   const nav = useNavigate();
-  const canManage = permissions.can(fromBusinessRole(auth.role), MANAGE);
+  const canManage = permissions.can(auth.role, MANAGE);
   const [errors, setErrors] = useState<string[]>([]), [confirm, setConfirm] = useState(false);
   if (!state) return <p className="text-muted">Loading…</p>;
   const s = state.SUP.find((x) => x.id === id);

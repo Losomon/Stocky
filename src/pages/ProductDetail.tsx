@@ -16,7 +16,7 @@ export default function ProductDetail() {
   const auth = useAuth();
   const { id } = useParams();
   const nav = useNavigate();
-  const canManage = permissions.can(fromBusinessRole(auth.role), MANAGE);
+  const canManage = permissions.can(auth.role, MANAGE);
   const [errors, setErrors] = useState<string[]>([]);
   const [confirm, setConfirm] = useState(false);
   const p = state?.P.find((x) => x.id === id);
@@ -56,8 +56,8 @@ export default function ProductDetail() {
           </>
         ) : (
           <>
-            <span className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 font-semibold text-muted" disabled>Edit</span>
-            <span className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 font-semibold text-muted" disabled>{p.archived ? "Restore" : "Archive"}</span>
+            <span className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 font-semibold text-muted">Edit</span>
+            <span className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 font-semibold text-muted">{p.archived ? "Restore" : "Archive"}</span>
             <span className="text-xs text-muted">Product changes require the Owner or Manager role.</span>
           </>
         )}

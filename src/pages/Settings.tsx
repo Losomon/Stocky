@@ -44,8 +44,8 @@ export default function Settings() {
   const [roleBusy, setRoleBusy] = useState<Set<string>>(new Set());
   const [removeBusy, setRemoveBusy] = useState<Set<string>>(new Set());
   const myMembership = auth.user ? members.find((m) => m.user_id === auth.user!.id) : undefined;
-  const canManageWorkers = permissions.can(fromBusinessRole(auth.role), MANAGE_WORKERS);
-  const canManageBusiness = permissions.can(fromBusinessRole(auth.role), MANAGE_BUSINESS);
+  const canManageWorkers = permissions.can(auth.role, MANAGE_WORKERS);
+  const canManageBusiness = permissions.can(auth.role, MANAGE_BUSINESS);
   const amOwner = myMembership?.role === "owner";
   const loadMembers = async () => {
     if (!hasSupabase || !auth.businessId) return;

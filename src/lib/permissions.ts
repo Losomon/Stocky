@@ -4,6 +4,7 @@
 // workers can view the dashboard and record sales, but cannot change
 // product, purchase, worker or business records.
 export type Role = "owner" | "manager" | "worker";
+export type BusinessRole = "owner" | "admin" | "manager" | "cashier";
 export type Permission =
   | "view.dashboard"
   | "record.sales"
@@ -13,13 +14,11 @@ export type Permission =
   | "manage.workers"
   | "manage.business";
 
-export type BusinessRole = "owner" | "admin" | "manager" | "cashier";
-
 export const fromBusinessRole = (role: BusinessRole | null): Role | null => {
   if (!role) return null;
   if (role === "owner") return "owner";
   if (role === "admin" || role === "manager") return "manager";
-  return "worker"; // cashier
+  return "worker";
 };
 
 export interface RoleDefinition {
@@ -85,19 +84,22 @@ export class Permissions {
     const next = { ...this.config, [role]: permissions };
     // Owner cannot lose worker/business management.
     if (role === "owner") {
-      for (const p of ["manage.workers", "manage.business"]) {
+      const ownerOnlyPermissions: Permission[] = ["manage.workers", "manage.business"];
+      for (const p of ownerOnlyPermissions) {
         if (!next.owner.includes(p)) next.owner.push(p);
       }
     }
     this.config = next;
   }
-  can(role: Role | null, permission: Permission): boolean {
+  can(role: Role | BusinessRole | null, permission: Permission): boolean {
     if (!role) return false; // no authenticated identity: nothing is permitted by default
-    return this.config[role]?.includes(permission) ?? false;
+    const normalizedRole = role === "worker" ? role : fromBusinessRole(role);
+    return normalizedRole ? this.config[normalizedRole]?.includes(permission) ?? false : false;
   }
   roleFor(label: string): Role | null {
     for (const [key, def] of Object.entries(DEFAULT_ROLES)) {
-      if (def.label.toLowerCase() === label.toLowerCase() || key === label) return key as Role;
+      if (def.label.toLowerCase() === label.toLowerCase() || key === label)
+        return key as Role;
     }
     return null;
   }

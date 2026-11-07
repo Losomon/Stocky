@@ -18,7 +18,7 @@ export default function PurchaseForm({ mode }: { mode: "new" | "edit" }) {
   const { id } = useParams();
   const [params] = useSearchParams();
   const nav = useNavigate();
-  const canManage = permissions.can(fromBusinessRole(auth.role), MANAGE);
+  const canManage = permissions.can(auth.role, MANAGE);
   const existing = mode === "edit" ? state?.PU.find((p) => p.id === id) : undefined;
   if (!state) return <p className="text-muted">Loading…</p>;
   if (!canManage) {

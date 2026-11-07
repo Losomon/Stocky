@@ -13,7 +13,7 @@ export default function SupplierForm({ mode }: { mode: "new" | "edit" }) {
   const auth = useAuth();
   const { id } = useParams();
   const nav = useNavigate();
-  const canManage = permissions.can(fromBusinessRole(auth.role), MANAGE);
+  const canManage = permissions.can(auth.role, MANAGE);
   const sup = mode === "edit" ? state?.SUP.find((s) => s.id === id) : undefined;
   const [f, setF] = useState({ name: sup?.name ?? "", contact: sup?.contact ?? "", phone: sup?.phone ?? "", email: sup?.email ?? "", location: sup?.location ?? "", notes: sup?.notes ?? "" });
   const [errors, setErrors] = useState<string[]>([]);

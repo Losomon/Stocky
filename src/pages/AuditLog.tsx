@@ -4,6 +4,7 @@ import { Calendar, Filter, Search, User } from "lucide-react";
 import { when } from "../lib/format";
 import type { StockCtx } from "../lib/store";
 import { useAuth } from "../context/AuthContext";
+import { fromBusinessRole } from "../lib/permissions";
 import { Badge, Card, Empty, btnGhost } from "../components/ui";
 
 const ACTION_LABEL: Record<string, string> = {
@@ -93,7 +94,7 @@ export default function AuditLog() {
             <li key={e.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
               <div className="min-w-0 flex-1"><p className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-full bg-soft font-bold text-pdark" aria-hidden>{e.staff.slice(0, 2).toUpperCase()}</span>
                 <span className="font-medium">{e.staff}</span></p>
-                <p className="text-sm text-muted">{ACTION_LABEL[e.action] ?? e.action}{e.legacy_staff_name ? ` (recorded as ${e.legacy_staff_name})` : ""}</p></div>
+                <p className="text-sm text-muted">{ACTION_LABEL[e.action] ?? e.action}</p></div>
               <div className="text-right text-sm"><p className="font-semibold text-ink">{when(e.ts)}</p><p className="text-xs text-muted">{e.entity} · {e.entityId}</p>{e.oldValue !== undefined || e.newValue !== undefined ? <p className="text-xs text-muted mt-1">{e.oldValue !== undefined ? `before: ${e.oldValue}` : ""}{e.oldValue !== undefined && e.newValue !== undefined ? " → " : ""}{e.newValue !== undefined ? `after: ${e.newValue}` : ""}</p> : null}</div>
             </li>
           ))}
