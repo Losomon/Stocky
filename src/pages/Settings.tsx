@@ -8,10 +8,14 @@ import { daysAgo } from "../lib/format";
 import { hasSupabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { fetchMembers, inviteMember, invitationLink, removeMember, setMemberRole, type BusinessMember, type BusinessRole } from "../lib/business";
+import { permissions, type Permission } from "../lib/permissions";
 import RestoreBackup from "../components/RestoreBackup";
 import { staffInUse } from "../lib/people";
 import { deviceStaffName, type StockCtx } from "../lib/store";
 import { Badge, Card, Errors, btnGhost, btnPrimary, fieldCls } from "../components/ui";
+
+const MANAGE_WORKERS: Permission = "manage.workers";
+const MANAGE_BUSINESS: Permission = "manage.business";
 
 export default function Settings() {
   const ctx = useOutletContext<StockCtx>();
@@ -40,7 +44,8 @@ export default function Settings() {
   const [roleBusy, setRoleBusy] = useState<Set<string>>(new Set());
   const [removeBusy, setRemoveBusy] = useState<Set<string>>(new Set());
   const myMembership = auth.user ? members.find((m) => m.user_id === auth.user!.id) : undefined;
-  const canManage = myMembership ? ["owner", "admin"].includes(myMembership.role) : false;
+  const canManageWorkers = permissions.can(fromBusinessRole(auth.role), MANAGE_WORKERS);
+  const canManageBusiness = permissions.can(fromBusinessRole(auth.role), MANAGE_BUSINESS);
   const amOwner = myMembership?.role === "owner";
   const loadMembers = async () => {
     if (!hasSupabase || !auth.businessId) return;
@@ -65,7 +70,7 @@ export default function Settings() {
     await loadMembers();
   };
   const handleRoleChange = async (userId: string, role: Exclude<BusinessRole, "owner">) => {
-    if (!auth.businessId || userId === auth.user?.id || roleOf(userId) === "owner") return;
+    if (!auth.businessId || !canManageWorkers || userId === auth.user?.id || roleOf(userId) === "owner") return;
     setRoleBusy((s) => new Set([...s, userId]));
     const r = await setMemberRole(auth.businessId, userId, role);
     setRoleBusy((s) => { const n = new Set(s); n.delete(userId); return n; });
@@ -73,7 +78,7 @@ export default function Settings() {
     await loadMembers();
   };
   const handleRemove = async (userId: string) => {
-    if (!auth.businessId || userId === auth.user?.id || roleOf(userId) === "owner") return;
+    if (!auth.businessId || !canManageWorkers || userId === auth.user?.id || roleOf(userId) === "owner") return;
     if (!window.confirm("Remove this person from the business? They will lose access to its data.")) return;
     setRemoveBusy((s) => new Set([...s, userId]));
     const r = await removeMember(auth.businessId, userId);
@@ -115,9 +120,10 @@ export default function Settings() {
           <label className="block"><span className="mb-1 block text-sm font-medium">Phone (optional)</span><input className={fieldCls} inputMode="tel" value={biz.phone} onChange={(e) => { setBiz({ ...biz, phone: e.target.value }); setSaved(false); }} /></label>
           <label className="block"><span className="mb-1 block text-sm font-medium">Location (optional)</span><input className={fieldCls} value={biz.location} onChange={(e) => { setBiz({ ...biz, location: e.target.value }); setSaved(false); }} /></label>
         </div>
-        <div className="flex items-center gap-3"><button onClick={() => void run(updateBusiness(biz), setBizErr, () => setSaved(true))} className={btnPrimary}>Save business details</button>
+        <div className="flex items-center gap-3"><button disabled={!canManageBusiness || saved} onClick={() => void run(updateBusiness(biz), setBizErr, () => setSaved(true))} className={btnPrimary}>Save business details</button>
           {saved && <span role="status" className="flex items-center gap-1 text-sm font-medium text-ok"><Check size={16} />Saved</span>}</div>
         <p className="text-sm text-muted">Currency is Kenya shillings (KES).</p>
+        {!canManageBusiness && <p className="text-sm text-muted">Your role ({myMembership?.role}) can't change business details. Business settings are limited to the Owner.</p>}
         {hasSupabase && <p className="text-sm text-muted">These profile edits are stored on this device only; the business profile is not yet synchronized to Supabase.</p>}
       </Card>
 
@@ -134,15 +140,22 @@ export default function Settings() {
                   <span className="font-medium">{p.name}</span>{isMe && <Badge tone="ok"><Check size={14} />This device</Badge>}{p.archived && <Badge tone="muted">Archived</Badge>}</span>
                 <span className="flex flex-wrap gap-2">
                   {!isMe && !p.archived && <button onClick={() => void run(setDeviceStaff(p.id), setStaffErr)} className={btnGhost}>Use this device as {p.name}</button>}
-                  <button onClick={() => void run(setStaffArchived(p.id, !p.archived), setStaffErr)} className={btnGhost}>{p.archived ? "Restore" : "Archive"}</button>
-                  {!used && !isMe && <button onClick={() => void run(deleteStaff(p.id), setStaffErr)} className={btnGhost}>Delete</button>}
+                  {!isMe && !p.archived && canManageWorkers && <button onClick={() => void run(setStaffArchived(p.id, !p.archived), setStaffErr)} className={btnGhost}>{p.archived ? "Restore" : "Archive"}</button>}
+                  {!used && !isMe && canManageWorkers && <button onClick={() => void run(deleteStaff(p.id), setStaffErr)} className={btnGhost}>Delete</button>}
+                  {!canManageWorkers && !isMe && !p.archived && <span className="text-xs text-muted">Owner role required to archive or remove people.</span>}
                 </span>
               </li>);
           })}
         </ul>
         <div className="flex flex-wrap gap-2">
-          <input className={`${fieldCls} flex-1`} placeholder="Add a person, e.g. Wanjiku" aria-label="New staff name" value={newName} onChange={(e) => setNewName(e.target.value)} />
-          <button onClick={() => void run(createStaff(newName), setStaffErr, () => setNewName(""))} className={btnPrimary}>Add person</button>
+          {canManageWorkers ? (
+            <>
+              <input className={`${fieldCls} flex-1`} placeholder="Add a person, e.g. Wanjiku" aria-label="New staff name" value={newName} onChange={(e) => setNewName(e.target.value)} />
+              <button onClick={() => void run(createStaff(newName), setStaffErr, () => setNewName(""))} className={btnPrimary}>Add person</button>
+            </>
+          ) : (
+            <span className="text-xs text-muted">Adding people requires the Owner role.</span>
+          )}
         </div>
         <p className="text-sm text-muted">Names can't be changed, because past records keep the name they were made under. Archive someone who leaves.</p>
       </Card>
@@ -163,7 +176,7 @@ export default function Settings() {
                     <span className="flex flex-wrap gap-2">
                       <span className="inline-flex items-center gap-1 text-sm font-medium text-muted">
                         <span className="font-semibold">{m.role}</span>
-                        {canManage && m.role !== "owner" && !isMe && (
+                          {canManageWorkers && m.role !== "owner" && !isMe && (
                           <select value={m.role} onChange={(e) => void handleRoleChange(m.user_id, e.target.value as Exclude<BusinessRole, "owner">)} disabled={roleBusy.has(m.user_id)} className="text-sm border border-line rounded-md px-2 py-1 bg-surface">
                             <option value="admin">Admin</option>
                             <option value="manager">Manager</option>
@@ -171,7 +184,7 @@ export default function Settings() {
                           </select>
                         )}
                       </span>
-                      {canManage && m.role !== "owner" && !isMe && (
+                      {canManageWorkers && m.role !== "owner" && !isMe && (
                         <button disabled={removeBusy.has(m.user_id)} onClick={() => void handleRemove(m.user_id)} className={btnGhost}>Remove</button>
                       )}
                     </span>
@@ -180,7 +193,7 @@ export default function Settings() {
               })
             }
           </ul>
-          {canManage && (
+          {canManageWorkers && (
             <div className="pt-2">
               <h3 className="text-sm font-semibold mb-2">Invite a worker</h3>
               <Errors list={inviteErr} />
@@ -202,7 +215,7 @@ export default function Settings() {
               </div>}
             </div>
           )}
-          {!canManage && <p className="text-sm text-muted">Your role ({myMembership?.role}) does not allow inviting or managing team members.</p>}
+          {!canManageWorkers && <p className="text-sm text-muted">Your role ({myMembership?.role}) does not allow inviting or managing team members.</p>}
         </Card>
       )}
 

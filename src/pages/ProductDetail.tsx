@@ -4,14 +4,19 @@ import { AlertTriangle, Check } from "lucide-react";
 import { hasHistory, inventory } from "../lib/engine";
 import { MOVE_LABEL, kes, qtyText, when } from "../lib/format";
 import type { StockCtx } from "../lib/store";
+import { useAuth } from "../context/AuthContext";
+import { permissions, type Permission } from "../lib/permissions";
 import { Badge, Card, Empty, btnGhost, btnPrimary } from "../components/ui";
 
 const STATUS = { ok: "In stock", low: "Low stock", out: "Out of stock" } as const;
+const MANAGE: Permission = "manage.products";
 
 export default function ProductDetail() {
   const { state, setArchived, deleteProduct } = useOutletContext<StockCtx>();
+  const auth = useAuth();
   const { id } = useParams();
   const nav = useNavigate();
+  const canManage = permissions.can(fromBusinessRole(auth.role), MANAGE);
   const [errors, setErrors] = useState<string[]>([]);
   const [confirm, setConfirm] = useState(false);
   const p = state?.P.find((x) => x.id === id);
@@ -41,11 +46,21 @@ export default function ProductDetail() {
         {stats.map(([k, v]) => <div key={k} className="rounded-2xl border border-line bg-surface p-4"><p className="text-sm text-muted">{k}</p><p className="text-xl font-bold">{v}</p></div>)}
       </div>
       <div className="flex flex-wrap gap-2">
-        <Link to={`/products/${p.id}/edit`} className={btnPrimary}>Edit</Link>
-        <button onClick={() => void act(setArchived(p.id, !p.archived))} className={btnGhost}>{p.archived ? "Restore" : "Archive"}</button>
-        {history ? <span className="self-center text-sm text-muted">Has history, so it can be archived but not deleted.</span>
-          : confirm ? <><button onClick={() => void act(deleteProduct(p.id), () => nav("/products"))} className={btnPrimary}>Yes, delete</button><button onClick={() => setConfirm(false)} className={btnGhost}>Keep</button></>
-          : <button onClick={() => setConfirm(true)} className={btnGhost}>Delete</button>}
+        {canManage ? (
+          <>
+            <Link to={`/products/${p.id}/edit`} className={btnPrimary}>Edit</Link>
+            <button onClick={() => void act(setArchived(p.id, !p.archived))} className={btnGhost}>{p.archived ? "Restore" : "Archive"}</button>
+            {history ? <span className="self-center text-sm text-muted">Has history, so it can be archived but not deleted.</span>
+              : confirm ? <><button onClick={() => void act(deleteProduct(p.id), () => nav("/products"))} className={btnPrimary}>Yes, delete</button><button onClick={() => setConfirm(false)} className={btnGhost}>Keep</button></>
+              : <button onClick={() => setConfirm(true)} className={btnGhost}>Delete</button>}
+          </>
+        ) : (
+          <>
+            <span className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 font-semibold text-muted" disabled>Edit</span>
+            <span className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 font-semibold text-muted" disabled>{p.archived ? "Restore" : "Archive"}</span>
+            <span className="text-xs text-muted">Product changes require the Owner or Manager role.</span>
+          </>
+        )}
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card><h2 className="mb-2 text-lg font-semibold">Recent movements</h2>

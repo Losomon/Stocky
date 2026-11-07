@@ -3,12 +3,18 @@ import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom
 import { hasPurchases, purchaseStatus, purchaseTotal, supplierStats } from "../lib/engine";
 import { kes, when } from "../lib/format";
 import type { StockCtx } from "../lib/store";
+import { useAuth } from "../context/AuthContext";
+import { permissions, type Permission } from "../lib/permissions";
 import { Badge, Card, Empty, Errors, PurchaseBadge, btnGhost, btnPrimary } from "../components/ui";
+
+const MANAGE: Permission = "manage.purchases";
 
 export default function SupplierDetail() {
   const { state, setSupplierArchived, deleteSupplier } = useOutletContext<StockCtx>();
+  const auth = useAuth();
   const { id } = useParams();
   const nav = useNavigate();
+  const canManage = permissions.can(fromBusinessRole(auth.role), MANAGE);
   const [errors, setErrors] = useState<string[]>([]), [confirm, setConfirm] = useState(false);
   if (!state) return <p className="text-muted">Loading…</p>;
   const s = state.SUP.find((x) => x.id === id);
@@ -34,12 +40,22 @@ export default function SupplierDetail() {
         {s.notes && <p className="mt-3 text-sm text-muted">{s.notes}</p>}
       </Card>
       <div className="flex flex-wrap gap-2">
-        {!s.archived && <Link to={`/purchases/new?supplier=${s.id}`} className={btnPrimary}>New purchase</Link>}
-        <Link to={`/purchases/suppliers/${s.id}/edit`} className={btnGhost}>Edit</Link>
-        <button onClick={() => void act(setSupplierArchived(s.id, !s.archived))} className={btnGhost}>{s.archived ? "Restore" : "Archive"}</button>
-        {history ? <span className="self-center text-sm text-muted">Has purchase history, so it can be archived but not deleted.</span>
-          : confirm ? <><button onClick={() => void act(deleteSupplier(s.id), () => nav("/purchases"))} className={btnPrimary}>Yes, delete</button><button onClick={() => setConfirm(false)} className={btnGhost}>Keep</button></>
-          : <button onClick={() => setConfirm(true)} className={btnGhost}>Delete</button>}
+        {!s.archived && canManage && <Link to={`/purchases/new?supplier=${s.id}`} className={btnPrimary}>New purchase</Link>}
+        {canManage ? (
+          <>
+            <Link to={`/purchases/suppliers/${s.id}/edit`} className={btnGhost}>Edit</Link>
+            <button onClick={() => void act(setSupplierArchived(s.id, !s.archived))} className={btnGhost}>{s.archived ? "Restore" : "Archive"}</button>
+            {history ? <span className="self-center text-sm text-muted">Has purchase history, so it can be archived but not deleted.</span>
+              : confirm ? <><button onClick={() => void act(deleteSupplier(s.id), () => nav("/purchases"))} className={btnPrimary}>Yes, delete</button><button onClick={() => setConfirm(false)} className={btnGhost}>Keep</button></>
+              : <button onClick={() => setConfirm(true)} className={btnGhost}>Delete</button>}
+          </>
+        ) : (
+          <>
+            <span className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 font-semibold text-muted">Edit</span>
+            <span className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 font-semibold text-muted">{s.archived ? "Restore" : "Archive"}</span>
+            <span className="text-xs text-muted">Supplier changes require the Owner or Manager role.</span>
+          </>
+        )}
       </div>
       <Card><h2 className="mb-2 text-lg font-semibold">Purchase history</h2>
         {mine.length === 0 ? <Empty title="No purchases yet" hint="Purchases from this supplier will appear here." /> : (

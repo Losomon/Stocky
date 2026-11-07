@@ -21,6 +21,8 @@ import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import CreateBusiness from "./pages/CreateBusiness";
 import AcceptInvitation from "./pages/AcceptInvitation";
+import AuditLog from "./pages/AuditLog";
+import Reports from "./pages/Reports";
 import { useStock } from "./lib/store";
 import { useAuth } from "./context/AuthContext";
 import type { StockCtx } from "./lib/store";
@@ -51,6 +53,8 @@ const AppRoutes = ({ stock }: { stock: StockCtx }) => (
         <Route path="customers/new" element={<CustomerForm mode="new" />} />
         <Route path="customers/:id" element={<CustomerDetail />} />
         <Route path="customers/:id/edit" element={<CustomerForm mode="edit" />} />
+        <Route path="audit-log" element={<AuditLog />} />
+        <Route path="reports" element={<Reports />} />
       </Route>
     </Routes>
   </Suspense>
